@@ -1,3 +1,4 @@
+import streamlit as st
 from google.cloud import bigquery
 import google.generativeai as genai
 import os
