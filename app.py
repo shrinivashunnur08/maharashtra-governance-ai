@@ -208,8 +208,8 @@ with st.sidebar:
     st.markdown("---")
     
     # Hackathon info
-    st.caption("🏆 Gen AI Exchange Hackathon 2025")
-    st.caption("📍 Problem Statement #10")
+    # st.caption("🏆 Gen AI Exchange Hackathon 2025")
+    # st.caption("📍 Problem Statement #10")
     st.caption("🏛️ Maharashtra State Government")
 
 # ==================== LOAD DATA ====================
@@ -221,9 +221,12 @@ def load_all_data():
         infrastructure_df = fetch_infrastructure_assets()
         health_df = fetch_health_surveillance()
         
-        # Add days_open column
+        # Add days_open column with FIXED timezone handling
         if not requests_df.empty:
-            requests_df['days_open'] = (datetime.now() - pd.to_datetime(requests_df['date_submitted'])).dt.days
+            # Remove timezone info from date_submitted
+            requests_df['date_submitted'] = pd.to_datetime(requests_df['date_submitted']).dt.tz_localize(None)
+            # Now calculate days_open
+            requests_df['days_open'] = (datetime.now() - requests_df['date_submitted']).dt.days
         
         return requests_df, infrastructure_df, health_df
     except Exception as e:
@@ -798,7 +801,7 @@ elif page == "🔒 Privacy & Security":
         
         st.markdown("#### 🔍 Data Anonymization Example")
         
-        example_name = "Rajesh Patil"
+        example_name = "Shrinivas"
         example_phone = "9876543210"
         anon_name, anon_phone = anonymize_citizen_data(example_name, example_phone)
         
@@ -1102,10 +1105,10 @@ st.markdown("""
 <div style='text-align: center; color: #64748b; padding: 30px 20px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 15px; margin-top: 40px;'>
     <h3 style='color: #1e293b; margin-bottom: 15px;'>🏛️ Government of Maharashtra</h3>
     <p style='font-size: 1.1em; margin: 10px 0;'><strong>AI-Powered Governance Platform</strong></p>
-    <p style='margin: 10px 0;'>Powered by Google Cloud | Gemini AI | Vertex AI | BigQuery | Cloud IAM</p>
-    <p style='margin: 10px 0;'>🏆 Gen AI Exchange Hackathon 2025 | Problem Statement #10</p>
+    <p style='margin: 10px 0;'>Built using Google Cloud | Gemini AI | Vertex AI | BigQuery | Cloud IAM</p>
+    <p style='margin: 10px 0;'></p>
     <p style='margin: 15px 0; font-size: 0.9em; color: #64748b;'>
-        Built with ❤️ for Maharashtra Citizens | Ensuring Data Privacy & Transparency
+        Developed by Shrinivas Hunnur for Maharashtra Citizens | Ensuring Data Privacy & Transparency
     </p>
 </div>
 """, unsafe_allow_html=True)

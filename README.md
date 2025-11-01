@@ -1,5 +1,8 @@
 # 🏛️ AI-Powered Governance Platform
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 ## Maharashtra State Government - Citizen Service Delivery System
 
 [![Powered by Google Cloud](https://img.shields.io/badge/Powered%20by-Google%20Cloud-4285F4?logo=google-cloud)](https://cloud.google.com)
@@ -15,7 +18,10 @@ The Government of Maharashtra holds vast, multi-sectoral public datasets coverin
 An enterprise-grade, AI-driven Governance Platform that transforms raw government data into predictive, actionable intelligence using Google Cloud's cutting-edge technologies.
 
 ## 🏗️ Architecture
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 ```
 ┌─────────────┐
 │  CITIZENS   │
@@ -50,21 +56,30 @@ An enterprise-grade, AI-driven Governance Platform that transforms raw governmen
 ## ✨ Key Features
 
 ### 1. 🔮 Predictive AI Models
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 - **Demand Forecasting**: Predict service demand 7 days ahead
 - **Bottleneck Detection**: Identify resource constraints before they escalate
 - **Risk Assessment**: Anticipate infrastructure and health risks
 - **Powered by**: Google Vertex AI + Gemini
 
 ### 2. ⚡ Dynamic Service Prioritization Engine
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 - **AI-Powered Scoring**: Automatic priority calculation
 - **Smart Routing**: Intelligent department assignment
 - **Real-Time Triage**: Instant escalation of critical cases
 - **Powered by**: Gemini AI + Custom ML Models
 
 ### 3. 🔒 Privacy & Security Framework
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 - **Compliance-by-Design**: Adheres to data governance standards
 - **Data Anonymization**: Automatic PII protection
 - **Role-Based Access**: Cloud IAM integration
@@ -72,7 +87,10 @@ An enterprise-grade, AI-driven Governance Platform that transforms raw governmen
 - **Powered by**: Cloud IAM + VPC + Encryption
 
 ### 4. 📊 Actionable Decision Dashboards
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 - **Real-Time Analytics**: Live data from BigQuery
 - **Visual Insights**: Interactive charts and metrics
 - **Policy Recommendations**: AI-generated action items
@@ -80,7 +98,10 @@ An enterprise-grade, AI-driven Governance Platform that transforms raw governmen
 - **Powered by**: BigQuery + Plotly
 
 ### 5. 🌐 Governance-as-a-Service (GaaS)
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 - **Public Transparency**: Open data for citizens
 - **Impact Measurement**: Quantifiable outcomes
 - **Trust Building**: Demonstrate data utilization
@@ -91,12 +112,21 @@ An enterprise-grade, AI-driven Governance Platform that transforms raw governmen
 
 ### Required Technologies (As per Problem Statement)
 
+<<<<<<< HEAD
 | Technology        | Purpose                                              | Implementation      |
 | ----------------- | ---------------------------------------------------- | ------------------- |
 | **Google Gemini** | Citizen query understanding, complaint summarization | ✅ Fully Integrated |
 | **Vertex AI**     | ML model training, deployment, predictions           | ✅ Fully Integrated |
 | **BigQuery**      | Massive-scale data warehousing, analytics            | ✅ Fully Integrated |
 | **Cloud IAM/VPC** | Security, compliance, access control                 | ✅ Fully Integrated |
+=======
+| Technology | Purpose | Implementation |
+|------------|---------|----------------|
+| **Google Gemini** | Citizen query understanding, complaint summarization | ✅ Fully Integrated |
+| **Vertex AI** | ML model training, deployment, predictions | ✅ Fully Integrated |
+| **BigQuery** | Massive-scale data warehousing, analytics | ✅ Fully Integrated |
+| **Cloud IAM/VPC** | Security, compliance, access control | ✅ Fully Integrated |
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 
 ### Additional Technologies
 
@@ -125,14 +155,20 @@ An enterprise-grade, AI-driven Governance Platform that transforms raw governmen
 ### Installation
 
 1. **Clone the repository**
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 ```bash
 git clone https://github.com/yourusername/maharashtra-governance-ai.git
 cd maharashtra-governance-ai
 ```
 
 2. **Install dependencies**
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 ```bash
 pip install -r requirements.txt
 ```
@@ -142,6 +178,7 @@ pip install -r requirements.txt
 a. Create a new project in [Google Cloud Console](https://console.cloud.google.com)
 
 b. Enable required APIs:
+<<<<<<< HEAD
 
 - Vertex AI API
 - BigQuery API
@@ -156,20 +193,39 @@ c. Create service account and download JSON key:
 
 4. **Configure environment variables**
 
+=======
+   - Vertex AI API
+   - BigQuery API
+   - Cloud IAM API
+   - Generative Language API
+
+c. Create service account and download JSON key:
+   - Go to IAM & Admin > Service Accounts
+   - Create service account with roles: BigQuery Admin, Vertex AI User
+   - Download JSON key to `credentials/google-cloud-key.json`
+
+4. **Configure environment variables**
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 ```bash
 cp .env.example .env
 # Edit .env with your actual credentials
 ```
 
 5. **Set up BigQuery datasets**
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 ```bash
 # Run the setup script (will be provided)
 python setup_bigquery.py
 ```
 
 6. **Run the application**
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 ```bash
 streamlit run app.py
 ```
@@ -179,7 +235,10 @@ streamlit run app.py
 ### BigQuery Tables
 
 #### `governance_data.citizen_requests`
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 ```sql
 - request_id: STRING
 - citizen_name_hash: STRING (anonymized)
@@ -197,7 +256,10 @@ streamlit run app.py
 ```
 
 #### `governance_data.predictions_log`
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 ```sql
 - prediction_id: STRING
 - request_id: STRING
@@ -210,7 +272,10 @@ streamlit run app.py
 ```
 
 #### `governance_data.audit_logs`
+<<<<<<< HEAD
 
+=======
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 ```sql
 - log_id: STRING
 - user_role: STRING
@@ -245,6 +310,7 @@ MIT License - See LICENSE file for details
 
 ## 📧 Contact
 
+<<<<<<< HEAD
 - **Email**: your.email@example.com
 - **LinkedIn**: [Your Profile](#)
 - **GitHub**: [@yourusername](#)
@@ -252,3 +318,12 @@ MIT License - See LICENSE file for details
 ---
 
 **Built with ❤️ for Maharashtra Citizens**
+=======
+- **Email**: yashhunnur7@gmail.com
+- **LinkedIn**: www.linkedin.com/in/shrinivas-hunnur-b93347225
+- **GitHub**: https://github.com/shrinivashunnur08
+
+---
+
+**Developed by Shrinivas Hunnur for Maharashtra Citizens**
+>>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
