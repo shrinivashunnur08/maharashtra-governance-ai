@@ -234,4 +234,4 @@ MIT License - See LICENSE file for details
 
 ---
 
-**Built with ❤️ for Maharashtra Citizens**
+**Developed by Shrinivas Hunnur for Maharashtra Citizens**
