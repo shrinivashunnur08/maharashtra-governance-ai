@@ -1,8 +1,5 @@
 # 🏛️ AI-Powered Governance Platform
-<<<<<<< HEAD
 
-=======
->>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
 ## Maharashtra State Government - Citizen Service Delivery System
 
 [![Powered by Google Cloud](https://img.shields.io/badge/Powered%20by-Google%20Cloud-4285F4?logo=google-cloud)](https://cloud.google.com)
