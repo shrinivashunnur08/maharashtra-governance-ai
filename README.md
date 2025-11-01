@@ -229,8 +229,8 @@ MIT License - See LICENSE file for details
 ## 📧 Contact
 
 - **Email**: your.email@example.com
-- **LinkedIn**: [Your Profile](#)
-- **GitHub**: [@yourusername](#)
+- **LinkedIn**: www.linkedin.com/in/shrinivas-hunnur-b93347225
+- **GitHub**: https://github.com/shrinivashunnur08
 
 ---
 
