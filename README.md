@@ -15,11 +15,7 @@ The Government of Maharashtra holds vast, multi-sectoral public datasets coverin
 An enterprise-grade, AI-driven Governance Platform that transforms raw government data into predictive, actionable intelligence using Google Cloud's cutting-edge technologies.
 
 ## 🏗️ Architecture
-<<<<<<< HEAD
 
-=======
->>>>>>> e54210f009976b8853c988858cf8a010ff8d21c2
-```
 ┌─────────────┐
 │  CITIZENS   │
 │  OFFICIALS  │
