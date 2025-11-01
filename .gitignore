@@ -1,0 +1,35 @@
+# Environment variables
+.env
+*.env
+
+# Google Cloud credentials
+credentials/
+*.json
+google-cloud-key.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Data
+*.csv
+*.db
+*.sqlite
+
+# Logs
+*.log
