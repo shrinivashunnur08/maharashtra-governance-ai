@@ -8,6 +8,10 @@ fileWatcherType = "none"
 [browser]
 gatherUsageStats = false
 
+[runner]
+magicEnabled = true
+fastReruns = true
+
 [theme]
 primaryColor = "#3b82f6"
 backgroundColor = "#ffffff"
