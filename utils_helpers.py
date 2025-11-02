@@ -1,5 +1,4 @@
 from google.cloud import bigquery
-from google.oauth2 import service_account
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
@@ -8,58 +7,31 @@ from datetime import datetime
 import pandas as pd
 import json
 
-# Load environment (for local development only)
+# Load environment
 load_dotenv()
 
-# ====== CRITICAL: STREAMLIT CLOUD CONFIGURATION ======
+# Initialize clients
+project_id = os.getenv('GOOGLE_CLOUD_PROJECT_ID')
+bigquery_client = bigquery.Client(project=project_id)
+
+# Configure Gemini API
+gemini_api_key = os.getenv('GEMINI_API_KEY')
+genai.configure(api_key=gemini_api_key)
+
+# Use the best available Gemini model for your API key
 try:
-    import streamlit as st
-    
-    # Check if running on Streamlit Cloud
-    if hasattr(st, 'secrets') and 'gcp_service_account' in st.secrets:
-        # ===== RUNNING ON STREAMLIT CLOUD =====
-        print("🌐 Detected Streamlit Cloud environment")
-        
-        # Get project ID from secrets
-        project_id = st.secrets.get('GOOGLE_CLOUD_PROJECT_ID', 'maharashtra-gov-ai-2025')
-        
-        # Create credentials from Streamlit secrets
-        credentials = service_account.Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"]
-        )
-        
-        # Initialize BigQuery with credentials
-        bigquery_client = bigquery.Client(
-            credentials=credentials,
-            project=project_id
-        )
-        
-        # Configure Gemini with secret API key
-        genai.configure(api_key=st.secrets['GEMINI_API_KEY'])
-        
-        print(f"✅ BigQuery client initialized for project: {project_id}")
-        print(f"✅ Gemini API configured from secrets")
-        
-    else:
-        # ===== RUNNING LOCALLY =====
-        print("💻 Detected local environment")
-        
-        project_id = os.getenv('GOOGLE_CLOUD_PROJECT_ID', 'maharashtra-gov-ai-2025')
-        bigquery_client = bigquery.Client(project=project_id)
-        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-        
-        print(f"✅ Using local credentials for project: {project_id}")
-
-except ImportError:
-    # Fallback if Streamlit not installed (shouldn't happen)
-    print("⚠️ Streamlit not found - using local environment variables")
-    project_id = os.getenv('GOOGLE_CLOUD_PROJECT_ID', 'maharashtra-gov-ai-2025')
-    bigquery_client = bigquery.Client(project=project_id)
-    genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-
-# Initialize Gemini model
-gemini_model = genai.GenerativeModel('gemini-1.5-flash')
-print("✅ Gemini 1.5 Flash model loaded")
+    # Try Gemini 2.5 Pro first (best performance)
+    gemini_model = genai.GenerativeModel('models/gemini-2.5-pro')
+    print("✅ Using Gemini 2.5 Pro model")
+except Exception as e:
+    try:
+        # Fallback to Gemini 2.5 Flash (fast and efficient)
+        gemini_model = genai.GenerativeModel('models/gemini-2.5-flash')
+        print("✅ Using Gemini 2.5 Flash model")
+    except Exception as e2:
+        # Final fallback
+        gemini_model = genai.GenerativeModel('models/gemini-flash-latest')
+        print("✅ Using Gemini Flash Latest model")
 
 # ==================== BIGQUERY FUNCTIONS ====================
 
