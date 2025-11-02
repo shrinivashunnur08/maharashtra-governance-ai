@@ -8,3 +8,4 @@ python-dotenv==1.0.0
 db-dtypes==1.2.0
 pyarrow==14.0.2
 google-auth==2.25.2
+watchdog==3.0.0

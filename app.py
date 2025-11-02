@@ -163,8 +163,8 @@ st.markdown("""
 # ==================== SIDEBAR ====================
 with st.sidebar:
     # Maharashtra emblem
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Emblem_of_Maharashtra.svg/800px-Emblem_of_Maharashtra.svg.png", 
-             width=120)
+    st.image("assets/logo.png",
+             width=59)
     
     st.markdown("### 🎯 Navigation")
     
