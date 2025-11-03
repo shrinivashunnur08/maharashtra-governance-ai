@@ -1,4 +1,5 @@
 from google.cloud import bigquery
+from google.oauth2 import service_account
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
@@ -7,31 +8,84 @@ from datetime import datetime
 import pandas as pd
 import json
 
-# Load environment
+# Load environment variables (for local dev)
 load_dotenv()
 
-# Initialize clients
-project_id = os.getenv('GOOGLE_CLOUD_PROJECT_ID')
-bigquery_client = bigquery.Client(project=project_id)
-
-# Configure Gemini API
-gemini_api_key = os.getenv('GEMINI_API_KEY')
-genai.configure(api_key=gemini_api_key)
-
-# Use the best available Gemini model for your API key
-try:
-    # Try Gemini 2.5 Pro first (best performance)
-    gemini_model = genai.GenerativeModel('models/gemini-2.5-pro')
-    print("✅ Using Gemini 2.5 Pro model")
-except Exception as e:
+def initialize_services():
+    """
+    Smart initialization that works BOTH locally and on Streamlit Cloud
+    """
     try:
-        # Fallback to Gemini 2.5 Flash (fast and efficient)
-        gemini_model = genai.GenerativeModel('models/gemini-2.5-flash')
-        print("✅ Using Gemini 2.5 Flash model")
-    except Exception as e2:
-        # Final fallback
-        gemini_model = genai.GenerativeModel('models/gemini-flash-latest')
-        print("✅ Using Gemini Flash Latest model")
+        # Try to import streamlit (only available when running as Streamlit app)
+        import streamlit as st
+        
+        # Check if we're on Streamlit Cloud (has secrets)
+        # We need to wrap this in try-except because accessing st.secrets 
+        # throws an error locally if no secrets file exists
+        try:
+            secrets_available = len(st.secrets) > 0 and 'gcp_service_account' in st.secrets
+        except (FileNotFoundError, RuntimeError):
+            # No secrets file found - running locally
+            secrets_available = False
+        
+        if secrets_available:
+            # ===== STREAMLIT CLOUD MODE =====
+            print("🌐 Running on Streamlit Cloud")
+            print("✅ Found GCP service account in secrets")
+            
+            # Get project ID from secrets or use default
+            project_id = st.secrets.get('GOOGLE_CLOUD_PROJECT_ID', 'maharashtra-gov-ai-2025')
+            
+            # Create credentials from Streamlit secrets
+            credentials = service_account.Credentials.from_service_account_info(
+                st.secrets["gcp_service_account"]
+            )
+            
+            # Initialize BigQuery with explicit credentials
+            bq_client = bigquery.Client(
+                credentials=credentials,
+                project=project_id
+            )
+            
+            # Configure Gemini with API key from secrets
+            gemini_key = st.secrets.get('GEMINI_API_KEY')
+            genai.configure(api_key=gemini_key)
+            
+            print(f"✅ BigQuery connected to project: {project_id}")
+            print("✅ Gemini API configured from secrets")
+            
+            return bq_client, project_id
+        else:
+            # No secrets available - use local credentials
+            print("💻 Streamlit running locally, using local credentials")
+            raise ImportError("Using local mode")
+            
+    except (ImportError, KeyError, AttributeError):
+        # ===== LOCAL DEVELOPMENT MODE =====
+        print("💻 Running in local development mode")
+        
+        # Use environment variables
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT_ID', 'maharashtra-gov-ai-2025')
+        
+        # Use Application Default Credentials (your current working setup)
+        bq_client = bigquery.Client(project=project_id)
+        
+        # Configure Gemini from .env
+        gemini_key = os.getenv('GEMINI_API_KEY')
+        genai.configure(api_key=gemini_key)
+        
+        print(f"✅ BigQuery connected locally to project: {project_id}")
+        print("✅ Gemini API configured from .env file")
+        
+        return bq_client, project_id
+
+# Initialize services
+bigquery_client, project_id = initialize_services()
+
+# Initialize Gemini model
+gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+print("✅ Gemini 1.5 Flash model ready")
+
 
 # ==================== BIGQUERY FUNCTIONS ====================
 
