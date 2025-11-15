@@ -32,13 +32,6 @@ from utils_helpers import (
     get_statistics_summary
 )
 
-# ==================== PAGE CONFIGURATION ====================
-st.set_page_config(
-    page_title="Maharashtra AI Governance Platform",
-    page_icon="🏛️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # ==================== CUSTOM CSS ====================
 st.markdown("""
