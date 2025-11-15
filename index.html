@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+<<<<<<< HEAD
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -34,10 +35,39 @@
           >
         </nav>
       </div>
+=======
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maharashtra AI Governance Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container header-content">
+            <div class="logo-section">
+                <div class="logo-emblem">🏛️</div>
+                <div class="logo-text">
+                    <h1>महाराष्ट्र शासन</h1>
+                    <p>Government of Maharashtra</p>
+                </div>
+            </div>
+            <nav class="nav-menu">
+                <a href="#dashboard" class="nav-link active" data-page="dashboard">Dashboard</a>
+                <a href="#analytics" class="nav-link" data-page="analytics">Analytics</a>
+                <a href="#portal" class="nav-link" data-page="portal">Citizen Portal</a>
+                <a href="#transparency" class="nav-link" data-page="transparency">Transparency</a>
+            </nav>
+        </div>
+>>>>>>> 5b436b7282e3e63ee1fb96329e8b89953197f0f4
     </header>
 
     <!-- Hero Section -->
     <section class="hero">
+<<<<<<< HEAD
       <div class="container">
         <div class="hero-content">
           <h2 class="hero-title">AI-Powered Governance Platform</h2>
@@ -53,10 +83,25 @@
           </div>
         </div>
       </div>
+=======
+        <div class="container">
+            <div class="hero-content">
+                <h2 class="hero-title">AI-Powered Governance Platform</h2>
+                <p class="hero-subtitle">Transforming Citizen Service Delivery through Predictive Intelligence</p>
+                <div class="tech-badges">
+                    <span class="tech-badge">Google Gemini AI</span>
+                    <span class="tech-badge">Supabase</span>
+                    <span class="tech-badge">Real-time Analytics</span>
+                    <span class="tech-badge">Secure & Compliant</span>
+                </div>
+            </div>
+        </div>
+>>>>>>> 5b436b7282e3e63ee1fb96329e8b89953197f0f4
     </section>
 
     <!-- Main Content -->
     <main class="main-content container">
+<<<<<<< HEAD
       <!-- Dashboard Page -->
       <div id="dashboard-page" class="page-content active">
         <h2 class="page-title">Executive Command Center</h2>
@@ -417,10 +462,314 @@
           </div>
         </div>
       </div>
+=======
+        <!-- Dashboard Page -->
+        <div id="dashboard-page" class="page-content active">
+            <h2 class="page-title">Executive Command Center</h2>
+            <p class="page-subtitle">Real-time governance intelligence powered by AI</p>
+
+            <!-- KPI Cards -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-icon">📊</div>
+                    <div class="kpi-details">
+                        <h3 class="kpi-value" id="total-requests">Loading...</h3>
+                        <p class="kpi-label">Total Requests</p>
+                        <span class="kpi-trend positive">+15% vs last week</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon">⏳</div>
+                    <div class="kpi-details">
+                        <h3 class="kpi-value" id="open-requests">Loading...</h3>
+                        <p class="kpi-label">Open Cases</p>
+                        <span class="kpi-trend" id="open-trend">Loading...</span>
+                    </div>
+                </div>
+                <div class="kpi-card critical">
+                    <div class="kpi-icon">🚨</div>
+                    <div class="kpi-details">
+                        <h3 class="kpi-value" id="critical-requests">Loading...</h3>
+                        <p class="kpi-label">Critical Cases</p>
+                        <span class="kpi-trend negative">+2 today</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon">👥</div>
+                    <div class="kpi-details">
+                        <h3 class="kpi-value" id="total-affected">Loading...</h3>
+                        <p class="kpi-label">Citizens Impacted</p>
+                        <span class="kpi-trend">Across Maharashtra</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Critical Alerts -->
+            <section class="section">
+                <h3 class="section-title">Real-Time Critical Alerts</h3>
+                <div id="critical-alerts" class="alerts-container">
+                    <div class="loading">Loading critical alerts...</div>
+                </div>
+            </section>
+
+            <!-- Charts -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3 class="chart-title">Requests by Type</h3>
+                    <canvas id="typeChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Geographic Distribution</h3>
+                    <canvas id="cityChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Requests Table -->
+            <section class="section">
+                <h3 class="section-title">Recent Service Requests</h3>
+                <div class="table-container">
+                    <table class="data-table" id="requests-table">
+                        <thead>
+                            <tr>
+                                <th>Request ID</th>
+                                <th>Type</th>
+                                <th>City</th>
+                                <th>Severity</th>
+                                <th>Status</th>
+                                <th>Affected</th>
+                                <th>Department</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="7" class="loading">Loading data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- Analytics Page -->
+        <div id="analytics-page" class="page-content">
+            <h2 class="page-title">Predictive Analytics Engine</h2>
+            <p class="page-subtitle">AI-powered forecasting using Google Gemini</p>
+
+            <div class="analytics-container">
+                <div class="analysis-card">
+                    <h3>AI-Powered Complaint Analysis</h3>
+                    <p>Select a request to analyze with Google Gemini AI</p>
+
+                    <div class="form-group">
+                        <label>Select Request ID:</label>
+                        <select id="analysis-request-id" class="form-control">
+                            <option>Loading...</option>
+                        </select>
+                    </div>
+
+                    <div id="request-details" class="info-box" style="display: none;">
+                        <!-- Request details will be populated here -->
+                    </div>
+
+                    <button id="analyze-btn" class="btn btn-primary btn-large">
+                        <span>Generate AI Prediction with Gemini</span>
+                    </button>
+
+                    <div id="prediction-results" class="results-container" style="display: none;">
+                        <!-- AI results will be shown here -->
+                    </div>
+                </div>
+
+                <div class="forecast-card">
+                    <h3>7-Day Service Demand Forecast</h3>
+                    <p>Using Google Gemini for predictive demand forecasting</p>
+
+                    <button id="forecast-btn" class="btn btn-primary btn-large">
+                        <span>Generate Demand Forecast</span>
+                    </button>
+
+                    <div id="forecast-results" class="results-container" style="display: none;">
+                        <!-- Forecast results will be shown here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Citizen Portal Page -->
+        <div id="portal-page" class="page-content">
+            <h2 class="page-title">Citizen Service Request Portal</h2>
+            <p class="page-subtitle">Submit your complaints and track service requests</p>
+
+            <div class="portal-tabs">
+                <button class="tab-btn active" data-tab="submit">Submit New Request</button>
+                <button class="tab-btn" data-tab="track">Track Request</button>
+            </div>
+
+            <!-- Submit Request Tab -->
+            <div id="submit-tab" class="tab-content active">
+                <div class="form-card">
+                    <div class="alert-info">
+                        <strong>Privacy Protected:</strong> Your personal information is encrypted and anonymized
+                    </div>
+
+                    <form id="complaint-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Full Name *</label>
+                                <input type="text" name="name" class="form-control" required placeholder="Enter your full name">
+                            </div>
+                            <div class="form-group">
+                                <label>Phone Number *</label>
+                                <input type="tel" name="phone" class="form-control" required placeholder="10-digit mobile number">
+                            </div>
+                            <div class="form-group">
+                                <label>Email Address</label>
+                                <input type="email" name="email" class="form-control" placeholder="your.email@example.com">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>City *</label>
+                                <select name="city" class="form-control" required>
+                                    <option value="">Select City</option>
+                                    <option>Mumbai</option>
+                                    <option>Pune</option>
+                                    <option>Nagpur</option>
+                                    <option>Nashik</option>
+                                    <option>Aurangabad</option>
+                                    <option>Thane</option>
+                                    <option>Solapur</option>
+                                    <option>Kolhapur</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Ward/Area *</label>
+                                <input type="text" name="ward" class="form-control" required placeholder="e.g., Ward 12">
+                            </div>
+                            <div class="form-group">
+                                <label>Complaint Type *</label>
+                                <select name="complaint_type" class="form-control" required>
+                                    <option value="">Select Type</option>
+                                    <option>Water Supply</option>
+                                    <option>Electricity</option>
+                                    <option>Road Repair</option>
+                                    <option>Healthcare</option>
+                                    <option>Garbage Collection</option>
+                                    <option>Street Lights</option>
+                                    <option>Drainage</option>
+                                    <option>Public Transport</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Detailed Description *</label>
+                            <textarea name="description" class="form-control" required rows="4" placeholder="Please describe your issue in detail..."></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Estimated Citizens Affected</label>
+                                <input type="number" name="affected_count" class="form-control" value="10" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label>Severity Assessment</label>
+                                <select name="severity" class="form-control">
+                                    <option>Low</option>
+                                    <option selected>Medium</option>
+                                    <option>High</option>
+                                    <option>Critical</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-large">
+                            <span>Submit Complaint</span>
+                        </button>
+                    </form>
+
+                    <div id="submission-result" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Track Request Tab -->
+            <div id="track-tab" class="tab-content">
+                <div class="form-card">
+                    <h3>Track Your Request</h3>
+
+                    <div class="form-group">
+                        <label>Enter Request ID</label>
+                        <input type="text" id="track-request-id" class="form-control" placeholder="e.g., R001">
+                    </div>
+
+                    <button id="track-btn" class="btn btn-primary btn-large">
+                        <span>Track Status</span>
+                    </button>
+
+                    <div id="tracking-result" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transparency Page -->
+        <div id="transparency-page" class="page-content">
+            <h2 class="page-title">Governance-as-a-Service Transparency</h2>
+            <p class="page-subtitle">Empowering citizens with open data and measurable impact</p>
+
+            <div class="transparency-grid">
+                <div class="impact-card">
+                    <h3>Impact Metrics</h3>
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <h4 id="resolved-count">Loading...</h4>
+                            <p>Complaints Resolved</p>
+                        </div>
+                        <div class="metric-item">
+                            <h4 id="resolution-time">Loading...</h4>
+                            <p>Avg Resolution Time</p>
+                        </div>
+                        <div class="metric-item">
+                            <h4>87%</h4>
+                            <p>Citizen Satisfaction</p>
+                        </div>
+                        <div class="metric-item">
+                            <h4>100%</h4>
+                            <p>Data Transparency</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="download-card">
+                    <h3>Open Data Access</h3>
+                    <p>Download anonymized data for research and civic engagement</p>
+                    <div class="download-buttons">
+                        <button class="btn btn-secondary" id="download-stats">
+                            <span>Download Complaint Statistics</span>
+                        </button>
+                        <button class="btn btn-secondary" id="download-geo">
+                            <span>Download Geographic Data</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="compliance-card">
+                    <h3>Security & Compliance</h3>
+                    <ul class="compliance-list">
+                        <li>AES-256 Encryption Active</li>
+                        <li>Supabase RLS Enabled</li>
+                        <li>Complete Audit Trail</li>
+                        <li>ISO 27001 Compliant</li>
+                        <li>GDPR Compliant</li>
+                        <li>Personal Data Anonymized</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+>>>>>>> 5b436b7282e3e63ee1fb96329e8b89953197f0f4
     </main>
 
     <!-- Footer -->
     <footer class="footer">
+<<<<<<< HEAD
       <div class="container">
         <div class="footer-content">
           <div class="footer-section">
@@ -443,4 +792,25 @@
 
     <script src="app.js"></script>
   </body>
+=======
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Government of Maharashtra</h3>
+                    <p>AI-Powered Governance Platform</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Technologies</h4>
+                    <p>Google Gemini AI | Supabase | Real-time Analytics</p>
+                </div>
+                <div class="footer-section">
+                    <p>Developed for Maharashtra Citizens | Data Privacy & Transparency Assured</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+>>>>>>> 5b436b7282e3e63ee1fb96329e8b89953197f0f4
 </html>

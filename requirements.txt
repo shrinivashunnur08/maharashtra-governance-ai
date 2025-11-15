@@ -1,4 +1,5 @@
 streamlit==1.31.0
+<<<<<<< HEAD
 google-cloud-bigquery==3.14.1
 google-cloud-aiplatform==1.38.1
 google-generativeai==0.3.2
@@ -8,3 +9,11 @@ plotly==5.18.0
 python-dotenv==1.0.0
 db-dtypes==1.2.0
 pyarrow==14.0.2
+=======
+google-generativeai==0.3.2
+python-dotenv==1.0.0
+supabase==2.3.0
+python-dateutil==2.8.2
+pandas==2.1.4
+plotly==5.18.0
+>>>>>>> 5b436b7282e3e63ee1fb96329e8b89953197f0f4
