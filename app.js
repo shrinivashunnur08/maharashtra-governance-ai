@@ -1396,13 +1396,15 @@ Return ONLY this JSON (no markdown, no backticks, no explanation):
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: 0.7,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 8192, // ← MUCH HIGHER (allows for thinking + response)
+      topP: 0.95,
+      topK: 40,
     },
   };
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // ← 30 seconds timeout (doubled)
 
     console.log("🔄 Calling Gemini 2.5 Flash for Forecast...");
 
@@ -1633,7 +1635,7 @@ Return ONLY this JSON (no markdown, no backticks, no explanation):
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: 0.7,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 8192, // ← INCREASED TO 8192 (same as analysis)
     },
   };
 
@@ -1663,31 +1665,35 @@ Return ONLY this JSON (no markdown, no backticks, no explanation):
     console.log("📦 Full response:", JSON.stringify(data, null, 2));
 
     // IMPROVED RESPONSE PARSING - Handle different response structures
+    // IMPROVED RESPONSE PARSING - Handle different response structures
+    // Extract text from response - IMPROVED PARSING
     let text = "";
-
-    // Try to extract text from various possible response structures
     if (data.candidates && data.candidates.length > 0) {
       const candidate = data.candidates[0];
+
+      // Check for various response structures
       if (
         candidate.content &&
         candidate.content.parts &&
         candidate.content.parts.length > 0
       ) {
         text = candidate.content.parts[0].text || "";
+      } else if (candidate.content && candidate.content.text) {
+        text = candidate.content.text;
       } else if (candidate.text) {
         text = candidate.text;
+      } else if (candidate.output) {
+        text = candidate.output;
       }
-    } else if (data.text) {
-      text = data.text;
-    } else if (data.content) {
-      text =
-        typeof data.content === "string"
-          ? data.content
-          : JSON.stringify(data.content);
+
+      // Check if response was truncated
+      if (candidate.finishReason === "MAX_TOKENS") {
+        console.warn("⚠️ Forecast response truncated. Using fallback.");
+        throw new Error("Response truncated - MAX_TOKENS");
+      }
     }
 
     if (!text) {
-      console.error("❌ Could not extract text from response:", data);
       throw new Error("No text in response");
     }
 
