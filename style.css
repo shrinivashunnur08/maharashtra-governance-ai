@@ -993,3 +993,65 @@ body {
   color: var(--text-gray);
   font-weight: 600;
 }
+
+/* ============================================
+   FORECAST-SPECIFIC STYLES
+   ============================================ */
+
+.forecast-metric {
+  position: relative;
+  padding: 30px 20px !important;
+}
+
+.forecast-icon {
+  font-size: 2.5em;
+  margin-bottom: 10px;
+}
+
+.forecast-trend {
+  display: block;
+  margin-top: 12px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: 600;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary-blue);
+}
+
+.forecast-trend.trend-up {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.forecast-trend.trend-stable {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.forecast-confidence {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.8em;
+  color: var(--text-gray);
+  font-weight: 500;
+}
+
+/* Make forecast metrics slightly different */
+.forecast-metric h4 {
+  font-size: 2.8em;
+  margin: 10px 0;
+}
+
+.forecast-metric p {
+  font-size: 1em;
+  font-weight: 700;
+  margin: 10px 0 0 0;
+}
+
+/* Enhanced grid for forecast */
+@media (max-width: 768px) {
+  .results-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
