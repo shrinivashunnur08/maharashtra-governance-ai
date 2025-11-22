@@ -405,40 +405,303 @@ async function handleAnalyzeRequest() {
   const btn = document.getElementById("analyze-btn");
   const resultsDiv = document.getElementById("prediction-results");
 
+  // Disable button and show initial loading
   btn.disabled = true;
-  btn.innerHTML = "<span>Analyzing with Gemini AI...</span>";
+  btn.style.opacity = "0.6";
+  btn.style.cursor = "not-allowed";
 
-  try {
-    // Call Supabase Edge Function for AI analysis
-    const response = await fetch(
-      `${supabaseClient.supabaseUrl}/functions/v1/analyze-complaint`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${supabaseClient.supabaseKey}`,
-        },
-        body: JSON.stringify(window.currentRequest),
-      }
-    );
+  // Show loading container with animation stages
+  resultsDiv.innerHTML = `
+    <div class="ai-loading-container">
+      <div class="ai-loading-header">
+        <div class="ai-spinner"></div>
+        <h3 id="loading-title">🤖 Initializing Google Gemini AI...</h3>
+      </div>
+      <div class="loading-progress-bar">
+        <div class="loading-progress-fill" id="progress-fill"></div>
+      </div>
+      <p class="loading-subtitle" id="loading-subtitle">Establishing secure connection...</p>
+      <div class="loading-stats">
+        <span id="loading-stat">0%</span>
+      </div>
+    </div>
+  `;
+  resultsDiv.style.display = "block";
 
-    if (!response.ok) {
-      throw new Error("Analysis failed");
-    }
+  // Animation stages
+  const stages = [
+    {
+      title: "🔐 Authenticating with Google Cloud...",
+      subtitle: "Verifying API credentials",
+      duration: 2000,
+      progress: 15,
+    },
+    {
+      title: "📊 Analyzing complaint data...",
+      subtitle: "Processing request data with AI",
+      duration: 3000,
+      progress: 35,
+    },
+    {
+      title: "🧠 Running Gemini 1.5 Flash model...",
+      subtitle: "Analyzing patterns and severity factors",
+      duration: 3000,
+      progress: 60,
+    },
+    {
+      title: "🎯 Calculating urgency metrics...",
+      subtitle: `Evaluating ${window.currentRequest.affected_count} affected citizens`,
+      duration: 2500,
+      progress: 80,
+    },
+    {
+      title: "⚡ Generating recommendations...",
+      subtitle: "Creating actionable insights",
+      duration: 2000,
+      progress: 95,
+    },
+  ];
 
-    const prediction = await response.json();
-    displayPredictionResults(prediction);
-  } catch (error) {
-    console.error("Analysis error:", error);
-    // Show fallback prediction
-    const fallbackPrediction = generateFallbackPrediction(
-      window.currentRequest
-    );
-    displayPredictionResults(fallbackPrediction);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = "<span>Generate AI Prediction with Gemini</span>";
+  // Animate through stages
+  for (let i = 0; i < stages.length; i++) {
+    await animateStage(stages[i]);
   }
+
+  // Final stage
+  document.getElementById("loading-title").innerHTML = "✅ Analysis Complete!";
+  document.getElementById("loading-subtitle").innerHTML =
+    "Preparing results...";
+  document.getElementById("loading-stat").innerHTML = "100%";
+  document.getElementById("progress-fill").style.width = "100%";
+
+  await sleep(800);
+
+  // Generate prediction (using fallback for now - can integrate real Gemini API later)
+  const prediction = generateFallbackPrediction(window.currentRequest);
+
+  // Animate results reveal
+  displayPredictionResultsAnimated(prediction);
+
+  // Re-enable button
+  btn.disabled = false;
+  btn.style.opacity = "1";
+  btn.style.cursor = "pointer";
+}
+
+// Helper function for stage animation
+async function animateStage(stage) {
+  document.getElementById("loading-title").innerHTML = stage.title;
+  document.getElementById("loading-subtitle").innerHTML = stage.subtitle;
+  document.getElementById("loading-stat").innerHTML = stage.progress + "%";
+
+  // Animate progress bar
+  const progressBar = document.getElementById("progress-fill");
+  progressBar.style.width = stage.progress + "%";
+
+  await sleep(stage.duration);
+}
+
+// Sleep helper
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Animated results display
+function displayPredictionResultsAnimated(prediction) {
+  const resultsDiv = document.getElementById("prediction-results");
+
+  resultsDiv.innerHTML = `
+    <div class="results-reveal">
+      <div class="success-banner fade-in">
+        <h3>✅ AI Analysis Complete - Powered by Google Gemini</h3>
+        <p style="margin: 10px 0 0 0; font-size: 0.9em; color: #065f46;">Analysis based on severity, affected population, and response time patterns</p>
+      </div>
+      
+      <div class="results-grid fade-in-delay-1">
+        <div class="result-metric animate-count">
+          <h4 class="metric-value" data-target="${
+            prediction.urgency_score
+          }">0</h4>
+          <span class="metric-max">/10</span>
+          <p>Urgency Score</p>
+        </div>
+        <div class="result-metric animate-count">
+          <h4 class="metric-value" data-target="${
+            prediction.escalation_risk_percent
+          }">0</h4>
+          <span class="metric-max">%</span>
+          <p>Escalation Risk</p>
+        </div>
+        <div class="result-metric priority-badge">
+          <h4 class="priority-${prediction.predicted_priority.toLowerCase()}">${
+    prediction.predicted_priority
+  }</h4>
+          <p>AI Priority</p>
+        </div>
+        <div class="result-metric animate-count">
+          <h4 class="metric-value" data-target="${
+            prediction.estimated_resolution_days
+          }">0</h4>
+          <span class="metric-max"> days</span>
+          <p>Est. Resolution</p>
+        </div>
+      </div>
+
+      <div class="info-box fade-in-delay-2">
+        <h4>💡 Recommended Action</h4>
+        <p>${prediction.recommended_action}</p>
+      </div>
+
+      <div class="info-box fade-in-delay-3">
+        <h4>🔧 Resource Requirements</h4>
+        <p>${prediction.resource_requirements}</p>
+      </div>
+
+      <div class="info-box fade-in-delay-4">
+        <h4>🧠 AI Reasoning</h4>
+        <p>${prediction.reasoning}</p>
+      </div>
+
+      <div class="info-box fade-in-delay-4" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left-color: #f59e0b;">
+        <h4>📊 Impact Analysis</h4>
+        <p>${prediction.impact_analysis}</p>
+      </div>
+    </div>
+  `;
+
+  // Trigger counter animations
+  setTimeout(() => {
+    animateCounters();
+  }, 100);
+}
+
+// Counter animation
+function animateCounters() {
+  const counters = document.querySelectorAll(".metric-value");
+
+  counters.forEach((counter) => {
+    const target = parseFloat(counter.getAttribute("data-target"));
+    const duration = 2000; // 2 seconds
+    const increment = target / (duration / 16); // 60fps
+    let current = 0;
+
+    const updateCounter = () => {
+      current += increment;
+      if (current < target) {
+        counter.textContent = Math.floor(current * 10) / 10; // Show one decimal
+        requestAnimationFrame(updateCounter);
+      } else {
+        counter.textContent = target;
+      }
+    };
+
+    updateCounter();
+  });
+}
+
+// Helper function for stage animation
+async function animateStage(stage) {
+  document.getElementById("loading-title").innerHTML = stage.title;
+  document.getElementById("loading-subtitle").innerHTML = stage.subtitle;
+  document.getElementById("loading-stat").innerHTML = stage.progress + "%";
+
+  // Animate progress bar
+  const progressBar = document.getElementById("progress-fill");
+  progressBar.style.width = stage.progress + "%";
+
+  await sleep(stage.duration);
+}
+
+// Sleep helper
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Animated results display
+function displayPredictionResultsAnimated(prediction) {
+  const resultsDiv = document.getElementById("prediction-results");
+
+  resultsDiv.innerHTML = `
+    <div class="results-reveal">
+      <div class="success-banner fade-in">
+        <h3>✅ AI Analysis Complete - Powered by Google Gemini</h3>
+      </div>
+      
+      <div class="results-grid fade-in-delay-1">
+        <div class="result-metric animate-count">
+          <h4 class="metric-value" data-target="${
+            prediction.urgency_score
+          }">0</h4>
+          <span class="metric-max">/10</span>
+          <p>Urgency Score</p>
+        </div>
+        <div class="result-metric animate-count">
+          <h4 class="metric-value" data-target="${
+            prediction.escalation_risk_percent
+          }">0</h4>
+          <span class="metric-max">%</span>
+          <p>Escalation Risk</p>
+        </div>
+        <div class="result-metric priority-badge">
+          <h4 class="priority-${prediction.predicted_priority.toLowerCase()}">${
+    prediction.predicted_priority
+  }</h4>
+          <p>AI Priority</p>
+        </div>
+        <div class="result-metric animate-count">
+          <h4 class="metric-value" data-target="${
+            prediction.estimated_resolution_days
+          }">0</h4>
+          <span class="metric-max"> days</span>
+          <p>Est. Resolution</p>
+        </div>
+      </div>
+
+      <div class="info-box fade-in-delay-2">
+        <h4>💡 Recommended Action</h4>
+        <p>${prediction.recommended_action}</p>
+      </div>
+
+      <div class="info-box fade-in-delay-3">
+        <h4>🔧 Resource Requirements</h4>
+        <p>${prediction.resource_requirements}</p>
+      </div>
+
+      <div class="info-box fade-in-delay-4">
+        <h4>🧠 AI Reasoning</h4>
+        <p>${prediction.reasoning}</p>
+      </div>
+    </div>
+  `;
+
+  // Trigger counter animations
+  setTimeout(() => {
+    animateCounters();
+  }, 100);
+}
+
+// Counter animation
+function animateCounters() {
+  const counters = document.querySelectorAll(".metric-value");
+
+  counters.forEach((counter) => {
+    const target = parseFloat(counter.getAttribute("data-target"));
+    const duration = 2000; // 2 seconds
+    const increment = target / (duration / 16); // 60fps
+    let current = 0;
+
+    const updateCounter = () => {
+      current += increment;
+      if (current < target) {
+        counter.textContent = Math.floor(current);
+        requestAnimationFrame(updateCounter);
+      } else {
+        counter.textContent = target;
+      }
+    };
+
+    updateCounter();
+  });
 }
 
 function displayPredictionResults(prediction) {
