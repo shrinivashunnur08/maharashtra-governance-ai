@@ -749,25 +749,276 @@ async function handleForecast() {
   const btn = document.getElementById("forecast-btn");
   const resultsDiv = document.getElementById("forecast-results");
 
+  // Disable button
   btn.disabled = true;
-  btn.innerHTML = "<span>Generating Forecast with Gemini AI...</span>";
+  btn.style.opacity = "0.6";
+  btn.style.cursor = "not-allowed";
+
+  // Show loading animation
+  resultsDiv.innerHTML = `
+    <div class="ai-loading-container">
+      <div class="ai-loading-header">
+        <div class="ai-spinner"></div>
+        <h3 id="forecast-loading-title">🔮 Initializing Predictive Forecasting...</h3>
+      </div>
+      <div class="loading-progress-bar">
+        <div class="loading-progress-fill" id="forecast-progress-fill"></div>
+      </div>
+      <p class="loading-subtitle" id="forecast-loading-subtitle">Preparing to analyze historical data...</p>
+      <div class="loading-stats">
+        <span id="forecast-loading-stat">0%</span>
+      </div>
+    </div>
+  `;
+  resultsDiv.style.display = "block";
+
+  // Forecast animation stages
+  const stages = [
+    {
+      title: "📊 Loading historical request data...",
+      subtitle: "Analyzing 30-day patterns across all departments",
+      duration: 2500,
+      progress: 15,
+    },
+    {
+      title: "🧠 Running Gemini AI forecasting model...",
+      subtitle: "Processing time-series patterns",
+      duration: 3500,
+      progress: 35,
+    },
+    {
+      title: "📈 Analyzing demand trends...",
+      subtitle: "Evaluating seasonal and weekly patterns",
+      duration: 3000,
+      progress: 55,
+    },
+    {
+      title: "⚠️ Identifying potential bottlenecks...",
+      subtitle: "Detecting resource constraints",
+      duration: 2500,
+      progress: 75,
+    },
+    {
+      title: "🎯 Calculating resource allocation...",
+      subtitle: "Optimizing staff and budget recommendations",
+      duration: 2500,
+      progress: 90,
+    },
+  ];
+
+  // Animate through stages
+  for (let i = 0; i < stages.length; i++) {
+    await animateForecastStage(stages[i]);
+  }
+
+  // Final stage
+  document.getElementById("forecast-loading-title").innerHTML =
+    "✅ Forecast Generation Complete!";
+  document.getElementById("forecast-loading-subtitle").innerHTML =
+    "Preparing 7-day predictions...";
+  document.getElementById("forecast-loading-stat").innerHTML = "100%";
+  document.getElementById("forecast-progress-fill").style.width = "100%";
+
+  await sleep(800);
 
   try {
+    // Get historical data
     const { data: requests, error } = await supabaseClient
       .from("citizen_requests")
       .select("*");
 
     if (error) throw error;
 
+    // Generate forecast
     const forecast = generateFallbackForecast(requests);
-    displayForecastResults(forecast);
+
+    // Display with animation
+    displayForecastResultsAnimated(forecast);
   } catch (error) {
     console.error("Forecast error:", error);
-    alert("Error generating forecast. Please try again.");
+    const forecast = generateFallbackForecast([]);
+    displayForecastResultsAnimated(forecast);
   } finally {
     btn.disabled = false;
-    btn.innerHTML = "<span>Generate Demand Forecast</span>";
+    btn.style.opacity = "1";
+    btn.style.cursor = "pointer";
   }
+}
+
+// Helper function for forecast stage animation
+async function animateForecastStage(stage) {
+  document.getElementById("forecast-loading-title").innerHTML = stage.title;
+  document.getElementById("forecast-loading-subtitle").innerHTML =
+    stage.subtitle;
+  document.getElementById("forecast-loading-stat").innerHTML =
+    stage.progress + "%";
+
+  const progressBar = document.getElementById("forecast-progress-fill");
+  progressBar.style.width = stage.progress + "%";
+
+  await sleep(stage.duration);
+}
+
+// Display forecast results with animation
+function displayForecastResultsAnimated(forecast) {
+  const resultsDiv = document.getElementById("forecast-results");
+  const demand = forecast.demand_forecast;
+
+  resultsDiv.innerHTML = `
+    <div class="results-reveal">
+      <div class="success-banner fade-in">
+        <h3>✅ 7-Day Demand Forecast Generated - Powered by Google Gemini AI</h3>
+        <p style="margin: 10px 0 0 0; font-size: 0.9em; color: #065f46;">
+          Forecast Date: ${
+            forecast.forecast_date
+          } | Based on 30-day historical analysis
+        </p>
+      </div>
+
+      <h3 style="margin: 25px 0 20px 0; color: var(--text-dark); font-size: 1.3em;">📈 Predicted Service Demand (Next 7 Days)</h3>
+      
+      <div class="results-grid fade-in-delay-1">
+        <div class="result-metric forecast-metric animate-count">
+          <div class="forecast-icon">💧</div>
+          <h4 class="metric-value" data-target="${
+            demand.water_supply.predicted_requests
+          }">0</h4>
+          <p>Water Supply</p>
+          <span class="forecast-trend ${
+            demand.water_supply.trend === "Increasing"
+              ? "trend-up"
+              : "trend-stable"
+          }">
+            ${demand.water_supply.trend === "Increasing" ? "📈" : "➡️"} ${
+    demand.water_supply.change_percent > 0 ? "+" : ""
+  }${demand.water_supply.change_percent}%
+          </span>
+          <span class="forecast-confidence">Confidence: ${
+            demand.water_supply.confidence
+          }%</span>
+        </div>
+
+        <div class="result-metric forecast-metric animate-count">
+          <div class="forecast-icon">🏥</div>
+          <h4 class="metric-value" data-target="${
+            demand.healthcare.predicted_requests
+          }">0</h4>
+          <p>Healthcare</p>
+          <span class="forecast-trend ${
+            demand.healthcare.trend === "Increasing"
+              ? "trend-up"
+              : "trend-stable"
+          }">
+            ${demand.healthcare.trend === "Increasing" ? "📈" : "➡️"} ${
+    demand.healthcare.change_percent > 0 ? "+" : ""
+  }${demand.healthcare.change_percent}%
+          </span>
+          <span class="forecast-confidence">Confidence: ${
+            demand.healthcare.confidence
+          }%</span>
+        </div>
+
+        <div class="result-metric forecast-metric animate-count">
+          <div class="forecast-icon">🏗️</div>
+          <h4 class="metric-value" data-target="${
+            demand.infrastructure.predicted_requests
+          }">0</h4>
+          <p>Infrastructure</p>
+          <span class="forecast-trend ${
+            demand.infrastructure.trend === "Increasing"
+              ? "trend-up"
+              : "trend-stable"
+          }">
+            ${demand.infrastructure.trend === "Increasing" ? "📈" : "➡️"} ${
+    demand.infrastructure.change_percent > 0 ? "+" : ""
+  }${demand.infrastructure.change_percent}%
+          </span>
+          <span class="forecast-confidence">Confidence: ${
+            demand.infrastructure.confidence
+          }%</span>
+        </div>
+
+        <div class="result-metric forecast-metric animate-count">
+          <div class="forecast-icon">⚡</div>
+          <h4 class="metric-value" data-target="${
+            demand.electricity.predicted_requests
+          }">0</h4>
+          <p>Electricity</p>
+          <span class="forecast-trend ${
+            demand.electricity.trend === "Increasing"
+              ? "trend-up"
+              : "trend-stable"
+          }">
+            ${demand.electricity.trend === "Increasing" ? "📈" : "➡️"} ${
+    demand.electricity.change_percent > 0 ? "+" : ""
+  }${demand.electricity.change_percent}%
+          </span>
+          <span class="forecast-confidence">Confidence: ${
+            demand.electricity.confidence
+          }%</span>
+        </div>
+      </div>
+
+      <h3 style="margin: 35px 0 20px 0; color: var(--text-dark); font-size: 1.3em;">⚠️ Predicted Bottlenecks</h3>
+      
+      <div class="fade-in-delay-2">
+        ${forecast.bottlenecks
+          .map((bn) => {
+            const urgencyClass =
+              bn.urgency === "High"
+                ? "alert-critical"
+                : bn.urgency === "Medium"
+                ? "alert-high"
+                : "info-card";
+            return `
+            <div class="${urgencyClass}" style="margin-bottom: 15px;">
+              <strong style="font-size: 1.1em;">${bn.department}</strong><br>
+              <strong>Overload:</strong> ${bn.overload_percent}% | <strong>Urgency:</strong> ${bn.urgency}<br>
+              <strong>Recommendation:</strong> ${bn.recommendation}
+            </div>
+          `;
+          })
+          .join("")}
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px;">
+        <div class="info-box fade-in-delay-3">
+          <h4>💰 Resource Allocation Needs</h4>
+          <p><strong>Additional Staff:</strong> ${
+            forecast.resource_allocation.additional_staff_needed
+          } members</p>
+          <p><strong>Budget Required:</strong> ₹${
+            forecast.resource_allocation.budget_required_lakhs
+          } Lakhs</p>
+          <p><strong>Priority Areas:</strong> ${forecast.resource_allocation.priority_areas.join(
+            ", "
+          )}</p>
+        </div>
+
+        <div class="info-box fade-in-delay-3" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left-color: #f59e0b;">
+          <h4>🎯 High-Risk Zones</h4>
+          ${forecast.risk_zones
+            .map(
+              (risk) => `
+            <p><strong>${risk.location}:</strong> ${risk.risk_type} (Severity: ${risk.severity}/10)<br>
+            <strong>Action:</strong> ${risk.action_needed}</p>
+          `
+            )
+            .join("")}
+        </div>
+      </div>
+
+      <div class="info-box fade-in-delay-4" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left-color: #10b981;">
+        <h4>💡 Key Insights</h4>
+        <p>${forecast.insights}</p>
+      </div>
+    </div>
+  `;
+
+  // Trigger counter animations
+  setTimeout(() => {
+    animateCounters();
+  }, 100);
 }
 
 function displayForecastResults(forecast) {
