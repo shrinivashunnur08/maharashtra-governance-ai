@@ -2,42 +2,671 @@
 
 const { createClient } = supabase;
 
+// === SIMPLE LOGIN SYSTEM ===
+// ============================================
+// AUTHENTICATION SYSTEM
+// ============================================
+
+const VALID_ADMIN_CODES = ["GOV2024", "MAHA2024", "ADMIN123"];
+
+// Switch between Login and Signup tabs
+function switchAuthTab(tab) {
+  document
+    .querySelectorAll(".auth-tab")
+    .forEach((t) => t.classList.remove("active"));
+  document
+    .querySelectorAll(".auth-form")
+    .forEach((f) => f.classList.remove("active"));
+
+  document.querySelector(`[data-auth="${tab}"]`).classList.add("active");
+  document.getElementById(`${tab}-form`).classList.add("active");
+
+  // Reset fields visibility
+  if (tab === "login") {
+    toggleLoginFields();
+  } else {
+    toggleSignupFields();
+  }
+}
+
+// Toggle login fields based on role
+function toggleLoginFields() {
+  const role = document.querySelector('input[name="login-role"]:checked').value;
+
+  if (role === "citizen") {
+    document.getElementById("citizen-login-fields").style.display = "block";
+    document.getElementById("official-login-fields").style.display = "none";
+    document.getElementById("login-email").required = true;
+    document.getElementById("login-password").required = true;
+    document.getElementById("official-login-name").required = false;
+    document.getElementById("official-login-code").required = false;
+  } else {
+    document.getElementById("citizen-login-fields").style.display = "none";
+    document.getElementById("official-login-fields").style.display = "block";
+    document.getElementById("login-email").required = false;
+    document.getElementById("login-password").required = false;
+    document.getElementById("official-login-name").required = true;
+    document.getElementById("official-login-code").required = true;
+  }
+}
+
+// Toggle signup fields based on role
+function toggleSignupFields() {
+  const role = document.querySelector(
+    'input[name="signup-role"]:checked'
+  ).value;
+
+  if (role === "citizen") {
+    document.getElementById("citizen-signup-fields").style.display = "block";
+    document.getElementById("official-signup-message").style.display = "none";
+    document.getElementById("citizen-signup-btn").style.display = "block";
+    document.getElementById("signup-name").required = true;
+    document.getElementById("signup-email").required = true;
+    document.getElementById("signup-phone").required = true;
+    document.getElementById("signup-password").required = true;
+    document.getElementById("signup-confirm").required = true;
+  } else {
+    document.getElementById("citizen-signup-fields").style.display = "none";
+    document.getElementById("official-signup-message").style.display = "block";
+    document.getElementById("citizen-signup-btn").style.display = "none";
+    document.getElementById("signup-name").required = false;
+    document.getElementById("signup-email").required = false;
+    document.getElementById("signup-phone").required = false;
+    document.getElementById("signup-password").required = false;
+    document.getElementById("signup-confirm").required = false;
+  }
+}
+
+// Handle Login
+function handleLogin(event) {
+  event.preventDefault();
+
+  const role = document.querySelector('input[name="login-role"]:checked').value;
+  const errorEl = document.getElementById("login-error");
+  errorEl.textContent = "";
+  errorEl.classList.remove("show");
+
+  if (role === "citizen") {
+    // Citizen login with email/password
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+
+    try {
+      const users = JSON.parse(localStorage.getItem("maha_users") || "[]");
+      const user = users.find(
+        (u) =>
+          u.email === email && u.password === password && u.role === "citizen"
+      );
+
+      if (!user) {
+        showError(errorEl, "❌ Invalid email or password");
+        return;
+      }
+
+      // Login successful
+      const session = {
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        role: "citizen",
+        loginTime: new Date().toISOString(),
+      };
+
+      localStorage.setItem("maha_session", JSON.stringify(session));
+      showMainApp(session);
+    } catch (error) {
+      showError(errorEl, "❌ Login failed. Please try again.");
+      console.error("Login error:", error);
+    }
+  } else {
+    // Official login with code only
+    const name = document.getElementById("official-login-name").value.trim();
+    const code = document.getElementById("official-login-code").value.trim();
+
+    if (!name || name.length < 2) {
+      showError(errorEl, "❌ Please enter a valid name");
+      return;
+    }
+
+    if (!VALID_ADMIN_CODES.includes(code)) {
+      showError(
+        errorEl,
+        "❌ Invalid access code. Use: GOV2024, MAHA2024, or ADMIN123"
+      );
+      return;
+    }
+
+    // Login successful
+    const session = {
+      userId: Date.now(),
+      name: name,
+      role: "official",
+      code: code,
+      loginTime: new Date().toISOString(),
+    };
+
+    localStorage.setItem("maha_session", JSON.stringify(session));
+    showMainApp(session);
+  }
+}
+
+// Handle Signup (Citizens only)
+function handleSignup(event) {
+  event.preventDefault();
+
+  const role = document.querySelector(
+    'input[name="signup-role"]:checked'
+  ).value;
+
+  if (role !== "citizen") {
+    return; // Officials can't signup
+  }
+
+  const name = document.getElementById("signup-name").value.trim();
+  const email = document.getElementById("signup-email").value.trim();
+  const phone = document.getElementById("signup-phone").value.trim();
+  const password = document.getElementById("signup-password").value;
+  const confirm = document.getElementById("signup-confirm").value;
+
+  const errorEl = document.getElementById("signup-error");
+  errorEl.textContent = "";
+  errorEl.classList.remove("show");
+
+  // Validation
+  if (password !== confirm) {
+    showError(errorEl, "❌ Passwords do not match");
+    return;
+  }
+
+  if (password.length < 6) {
+    showError(errorEl, "❌ Password must be at least 6 characters");
+    return;
+  }
+
+  try {
+    const existingUsers = JSON.parse(
+      localStorage.getItem("maha_users") || "[]"
+    );
+
+    if (existingUsers.find((u) => u.email === email)) {
+      showError(errorEl, "❌ Email already registered. Please login.");
+      return;
+    }
+
+    // Create new user
+    const newUser = {
+      id: Date.now(),
+      name,
+      email,
+      phone,
+      password,
+      role: "citizen",
+      createdAt: new Date().toISOString(),
+    };
+
+    existingUsers.push(newUser);
+    localStorage.setItem("maha_users", JSON.stringify(existingUsers));
+
+    alert(
+      `✅ Account created successfully!\n\nYou can now login with your email and password.`
+    );
+
+    // Auto-fill login form
+    document.getElementById("login-email").value = email;
+    switchAuthTab("login");
+    document.querySelector(
+      'input[name="login-role"][value="citizen"]'
+    ).checked = true;
+    toggleLoginFields();
+  } catch (error) {
+    showError(errorEl, "❌ Signup failed. Please try again.");
+    console.error("Signup error:", error);
+  }
+}
+
+function showError(element, message) {
+  element.textContent = message;
+  element.classList.add("show");
+}
+
+// Show error message
+function showError(element, message) {
+  element.textContent = message;
+  element.classList.add("show");
+}
+
+// Check existing session on page load
+// Check existing session on page load
+
+// Show main app after login
+// Show main app after login
+
+// Show main app after login - SINGLE CORRECT VERSION
+function showMainApp(session) {
+  console.log("🚀 showMainApp called for:", session.role);
+
+  // 🔥 CRITICAL: Initialize Supabase FIRST for BOTH roles
+  if (!supabaseClient) {
+    const supabaseUrl = "https://xyvlblrsndudtqqxhqtj.supabase.co";
+    const supabaseKey =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dmxibHJzbmR1ZHRxcXhocXRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyMDU1NTMsImV4cCI6MjA3ODc4MTU1M30.bQzDc276wj2QDgeEVU2d-glLTQnBNq4qrjTw9oyEmY0";
+    supabaseClient = createClient(supabaseUrl, supabaseKey);
+    console.log("✅ Supabase initialized for", session.role);
+  }
+
+  // Hide login, show app
+  document.getElementById("login-section").style.display = "none";
+  document.getElementById("main-app").style.display = "block";
+
+  // Set role class on body
+  document.body.classList.remove("role-citizen", "role-official");
+  document.body.classList.add(`role-${session.role}`);
+
+  // Update user header
+  updateUserHeader(session);
+
+  // Setup event listeners for BOTH roles
+  setTimeout(() => {
+    setupEventListeners();
+    console.log("✅ Event listeners initialized");
+  }, 100);
+
+  // Navigate to appropriate default page
+  if (session.role === "citizen") {
+    navigateToPage("portal");
+  } else {
+    navigateToPage("dashboard");
+
+    // Load dashboard data for officials
+    setTimeout(() => {
+      loadDashboardData();
+      console.log("✅ Dashboard data loading...");
+    }, 200);
+  }
+
+  console.log(`✅ Logged in as ${session.role}: ${session.name}`);
+}
+
+// Update user header
+function updateUserHeader(session) {
+  const headerHtml = `
+    <div class="user-header">
+      <div class="user-info">
+        <div class="user-avatar">${
+          session.role === "official" ? "🏛️" : "👤"
+        }</div>
+        <div>
+          <div class="user-name">${session.name}</div>
+          <div class="user-role">${
+            session.role === "official" ? "Government Official" : "Citizen"
+          }</div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="handleLogout()">🚪 Logout</button>
+    </div>
+  `;
+
+  const mainApp = document.getElementById("main-app");
+  const existingHeader = mainApp.querySelector(".user-header");
+
+  if (existingHeader) {
+    existingHeader.outerHTML = headerHtml;
+  } else {
+    mainApp.insertAdjacentHTML("afterbegin", headerHtml);
+  }
+}
+
+// Handle Logout
+function handleLogout() {
+  if (confirm("Are you sure you want to logout?")) {
+    localStorage.removeItem("maha_session");
+
+    document.body.classList.remove("role-citizen", "role-official");
+    document.getElementById("main-app").style.display = "none";
+    document.getElementById("login-section").style.display = "flex";
+
+    document.getElementById("login-form").reset();
+    document.getElementById("signup-form").reset();
+
+    console.log("✅ Logged out successfully");
+
+    setTimeout(() => {
+      location.reload();
+    }, 500);
+  }
+}
+
+function doLogout() {
+  if (confirm("Logout?")) {
+    localStorage.clear();
+    location.reload();
+  }
+}
+
+// Check if already logged in
+function checkLogin() {
+  const name = localStorage.getItem("admin_name");
+  const code = localStorage.getItem("admin_code");
+
+  if (name && code) {
+    // Already logged in - auto login
+    document.getElementById("admin-name").value = name;
+    document.getElementById("admin-code").value = code;
+    doLogin(new Event("submit"));
+  }
+}
+
+// === END LOGIN SYSTEM ===
+
 // Initialize Supabase Client
 // Note: In production, these should be in environment variables
 // For now, they'll be loaded from the deployed environment
 let supabaseClient;
 
 // Initialize application
+
+// ============================================
+// AUTHENTICATION SYSTEM
+// ============================================
+
+// Switch between Login and Signup tabs
+function switchAuthTab(tab) {
+  document
+    .querySelectorAll(".auth-tab")
+    .forEach((t) => t.classList.remove("active"));
+  document
+    .querySelectorAll(".auth-form")
+    .forEach((f) => f.classList.remove("active"));
+
+  document.querySelector(`[data-auth="${tab}"]`).classList.add("active");
+  document.getElementById(`${tab}-form`).classList.add("active");
+
+  if (tab === "login") {
+    toggleLoginFields();
+  } else {
+    toggleSignupFields();
+  }
+}
+
+// Handle Signup
+function handleSignup(event) {
+  event.preventDefault();
+
+  const role = document.querySelector(
+    'input[name="signup-role"]:checked'
+  ).value;
+
+  if (role !== "citizen") {
+    return;
+  }
+
+  const name = document.getElementById("signup-name").value.trim();
+  const email = document.getElementById("signup-email").value.trim();
+  const phone = document.getElementById("signup-phone").value.trim();
+  const password = document.getElementById("signup-password").value;
+  const confirm = document.getElementById("signup-confirm").value;
+
+  const errorEl = document.getElementById("signup-error");
+  errorEl.textContent = "";
+  errorEl.classList.remove("show");
+
+  if (password !== confirm) {
+    showError(errorEl, "❌ Passwords do not match");
+    return;
+  }
+
+  if (password.length < 6) {
+    showError(errorEl, "❌ Password must be at least 6 characters");
+    return;
+  }
+
+  try {
+    const existingUsers = JSON.parse(
+      localStorage.getItem("maha_users") || "[]"
+    );
+
+    if (existingUsers.find((u) => u.email === email)) {
+      showError(errorEl, "❌ Email already registered. Please login.");
+      return;
+    }
+
+    const newUser = {
+      id: Date.now(),
+      name,
+      email,
+      phone,
+      password,
+      role: "citizen",
+      createdAt: new Date().toISOString(),
+    };
+
+    existingUsers.push(newUser);
+    localStorage.setItem("maha_users", JSON.stringify(existingUsers));
+
+    alert(
+      `✅ Account created successfully!\n\nYou can now login with your email and password.`
+    );
+
+    document.getElementById("login-email").value = email;
+    switchAuthTab("login");
+    document.querySelector(
+      'input[name="login-role"][value="citizen"]'
+    ).checked = true;
+    toggleLoginFields();
+  } catch (error) {
+    showError(errorEl, "❌ Signup failed. Please try again.");
+    console.error("Signup error:", error);
+  }
+}
+
+// Handle Login
+function handleLogin(event) {
+  event.preventDefault();
+
+  const role = document.querySelector('input[name="login-role"]:checked').value;
+  const errorEl = document.getElementById("login-error");
+  errorEl.textContent = "";
+  errorEl.classList.remove("show");
+
+  if (role === "citizen") {
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+
+    try {
+      const users = JSON.parse(localStorage.getItem("maha_users") || "[]");
+      const user = users.find(
+        (u) =>
+          u.email === email && u.password === password && u.role === "citizen"
+      );
+
+      if (!user) {
+        showError(errorEl, "❌ Invalid email or password");
+        return;
+      }
+
+      const session = {
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        role: "citizen",
+        loginTime: new Date().toISOString(),
+      };
+
+      localStorage.setItem("maha_session", JSON.stringify(session));
+      showMainApp(session);
+    } catch (error) {
+      showError(errorEl, "❌ Login failed. Please try again.");
+      console.error("Login error:", error);
+    }
+  } else {
+    const name = document.getElementById("official-login-name").value.trim();
+    const code = document.getElementById("official-login-code").value.trim();
+
+    if (!name || name.length < 2) {
+      showError(errorEl, "❌ Please enter a valid name");
+      return;
+    }
+
+    if (!VALID_ADMIN_CODES.includes(code)) {
+      showError(
+        errorEl,
+        "❌ Invalid access code. Use: GOV2024, MAHA2024, or ADMIN123"
+      );
+      return;
+    }
+
+    const session = {
+      userId: Date.now(),
+      name: name,
+      role: "official",
+      code: code,
+      loginTime: new Date().toISOString(),
+    };
+
+    localStorage.setItem("maha_session", JSON.stringify(session));
+    showMainApp(session);
+  }
+}
+
+// Check existing session on page load
+// Check existing session on page load - SINGLE CORRECT VERSION
+function checkExistingSession() {
+  // Initialize Supabase BEFORE checking session
+  if (!supabaseClient) {
+    const supabaseUrl = "https://xyvlblrsndudtqqxhqtj.supabase.co";
+    const supabaseKey =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dmxibHJzbmR1ZHRxcXhocXRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyMDU1NTMsImV4cCI6MjA3ODc4MTU1M30.bQzDc276wj2QDgeEVU2d-glLTQnBNq4qrjTw9oyEmY0";
+    supabaseClient = createClient(supabaseUrl, supabaseKey);
+    console.log("✅ Supabase initialized at startup");
+  }
+
+  const session = JSON.parse(localStorage.getItem("maha_session"));
+
+  if (session) {
+    console.log("✅ Found existing session, auto-logging in...");
+    showMainApp(session);
+  } else {
+    console.log("❌ No session found, showing login page");
+  }
+}
+
+// Show main app after login// Show main app after login
+
+// Update user header bar
+function updateUserHeader(session) {
+  const headerHtml = `
+    <div class="user-header">
+      <div class="user-info">
+        <div class="user-avatar">${
+          session.role === "official" ? "🏛️" : "👤"
+        }</div>
+        <div>
+          <div class="user-name">${session.name}</div>
+          <div class="user-role">${
+            session.role === "official" ? "Government Official" : "Citizen"
+          }</div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="handleLogout()">🚪 Logout</button>
+    </div>
+  `;
+
+  const mainApp = document.getElementById("main-app");
+  const existingHeader = mainApp.querySelector(".user-header");
+
+  if (existingHeader) {
+    existingHeader.outerHTML = headerHtml;
+  } else {
+    mainApp.insertAdjacentHTML("afterbegin", headerHtml);
+  }
+}
+
+// Handle Logout
+function handleLogout() {
+  if (confirm("Are you sure you want to logout?")) {
+    localStorage.removeItem("maha_session");
+
+    // Reset UI
+    document.body.classList.remove("role-citizen", "role-official");
+    document.getElementById("main-app").style.display = "none";
+    document.getElementById("login-section").style.display = "flex";
+
+    // Clear forms
+    document.getElementById("login-form").reset();
+    document.getElementById("signup-form").reset();
+
+    console.log("✅ Logged out successfully");
+
+    // Reload page to reset everything
+    setTimeout(() => {
+      location.reload();
+    }, 500);
+  }
+}
+
+// Show/hide official code field based on role selection
+function setupRoleListeners() {
+  const signupRoleInputs = document.querySelectorAll(
+    'input[name="signup-role"]'
+  );
+  signupRoleInputs.forEach((input) => {
+    input.addEventListener("change", function () {
+      const codeGroup = document.getElementById("official-code-group");
+      if (this.value === "official") {
+        codeGroup.style.display = "block";
+      } else {
+        codeGroup.style.display = "none";
+      }
+    });
+  });
+}
+
+// Initialize application
+// Initialize application
+// Initialize application
 async function initApp() {
   try {
-    // Get Supabase credentials from meta tags (set by build process) or use defaults
-    const supabaseUrl =
-      document.querySelector('meta[name="supabase-url"]')?.content ||
-      "https://xyvlblrsndudtqqxhqtj.supabase.co";
-    const supabaseKey =
-      document.querySelector('meta[name="supabase-key"]')?.content ||
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dmxibHJzbmR1ZHRxcXhocXRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyMDU1NTMsImV4cCI6MjA3ODc4MTU1M30.bQzDc276wj2QDgeEVU2d-glLTQnBNq4qrjTw9oyEmY0";
+    const session = JSON.parse(localStorage.getItem("maha_session"));
 
-    supabaseClient = createClient(supabaseUrl, supabaseKey);
+    if (!session) {
+      console.log("❌ No session found in initApp");
+      return;
+    }
 
-    console.log("Application initialized");
+    console.log("✅ Initializing app for:", session.role);
 
-    // Load initial data
+    // CRITICAL FIX 4: Ensure Supabase is initialized
+    if (!supabaseClient) {
+      const supabaseUrl = "https://xyvlblrsndudtqqxhqtj.supabase.co";
+      const supabaseKey =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dmxibHJzbmR1ZHRxcXhocXRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyMDU1NTMsImV4cCI6MjA3ODc4MTU1M30.bQzDc276wj2QDgeEVU2d-glLTQnBNq4qrjTw9oyEmY0";
+      supabaseClient = createClient(supabaseUrl, supabaseKey);
+      console.log("✅ Supabase initialized in initApp");
+    }
+
     await loadDashboardData();
-
-    // Setup event listeners
     setupEventListeners();
   } catch (error) {
-    console.error("Initialization error:", error);
-    showError(
-      "Failed to initialize application. Please check your connection."
-    );
+    console.error("❌ Initialization error:", error);
+    showError("Failed to initialize. Please refresh the page.");
   }
 }
 
 // Setup event listeners
+// Setup event listeners
 function setupEventListeners() {
+  // CRITICAL FIX 6: Remove existing listeners before adding new ones
+  const complaintForm = document.getElementById("complaint-form");
+  const trackBtn = document.getElementById("track-btn");
+  const analyzeBtn = document.getElementById("analyze-btn");
+  const forecastBtn = document.getElementById("forecast-btn");
+
   // Navigation
+  document.querySelectorAll(".nav-link").forEach((link) => {
+    // Remove old listeners
+    link.replaceWith(link.cloneNode(true));
+  });
+
   document.querySelectorAll(".nav-link").forEach((link) => {
     link.addEventListener("click", (e) => {
       e.preventDefault();
@@ -48,6 +677,11 @@ function setupEventListeners() {
 
   // Portal tabs
   document.querySelectorAll(".tab-btn").forEach((btn) => {
+    // Remove old listeners
+    btn.replaceWith(btn.cloneNode(true));
+  });
+
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const tab = btn.dataset.tab;
       switchTab(tab);
@@ -55,36 +689,53 @@ function setupEventListeners() {
   });
 
   // Complaint form submission
-  const complaintForm = document.getElementById("complaint-form");
   if (complaintForm) {
-    complaintForm.addEventListener("submit", handleComplaintSubmission);
+    const newForm = complaintForm.cloneNode(true);
+    complaintForm.parentNode.replaceChild(newForm, complaintForm);
+    newForm.addEventListener("submit", handleComplaintSubmission);
   }
 
   // Track request button
-  const trackBtn = document.getElementById("track-btn");
   if (trackBtn) {
-    trackBtn.addEventListener("click", handleTrackRequest);
+    const newTrackBtn = trackBtn.cloneNode(true);
+    trackBtn.parentNode.replaceChild(newTrackBtn, trackBtn);
+    newTrackBtn.addEventListener("click", handleTrackRequest);
   }
 
   // Analysis button
-  const analyzeBtn = document.getElementById("analyze-btn");
   if (analyzeBtn) {
-    analyzeBtn.addEventListener("click", handleAnalyzeRequest);
+    const newAnalyzeBtn = analyzeBtn.cloneNode(true);
+    analyzeBtn.parentNode.replaceChild(newAnalyzeBtn, analyzeBtn);
+    newAnalyzeBtn.addEventListener("click", handleAnalyzeRequest);
   }
 
   // Forecast button
-  const forecastBtn = document.getElementById("forecast-btn");
   if (forecastBtn) {
-    forecastBtn.addEventListener("click", handleForecast);
+    const newForecastBtn = forecastBtn.cloneNode(true);
+    forecastBtn.parentNode.replaceChild(newForecastBtn, forecastBtn);
+    newForecastBtn.addEventListener("click", handleForecast);
   }
 
   // Download buttons
-  document
-    .getElementById("download-stats")
-    ?.addEventListener("click", downloadStats);
-  document
-    .getElementById("download-geo")
-    ?.addEventListener("click", downloadGeoData);
+  const downloadStatsBtn = document.getElementById("download-stats");
+  const downloadGeoBtn = document.getElementById("download-geo");
+
+  if (downloadStatsBtn) {
+    const newDownloadStatsBtn = downloadStatsBtn.cloneNode(true);
+    downloadStatsBtn.parentNode.replaceChild(
+      newDownloadStatsBtn,
+      downloadStatsBtn
+    );
+    newDownloadStatsBtn.addEventListener("click", downloadStats);
+  }
+
+  if (downloadGeoBtn) {
+    const newDownloadGeoBtn = downloadGeoBtn.cloneNode(true);
+    downloadGeoBtn.parentNode.replaceChild(newDownloadGeoBtn, downloadGeoBtn);
+    newDownloadGeoBtn.addEventListener("click", downloadGeoData);
+  }
+
+  console.log("✅ All event listeners setup complete");
 }
 
 // Navigation
@@ -229,13 +880,30 @@ function updateCriticalAlerts(requests) {
 }
 
 function updateCharts(requests) {
+  // CRITICAL FIX 5: Destroy existing charts before creating new ones
+  const typeChart = document.getElementById("typeChart");
+  const cityChart = document.getElementById("cityChart");
+
+  if (typeChart) {
+    const existingTypeChart = Chart.getChart("typeChart");
+    if (existingTypeChart) {
+      existingTypeChart.destroy();
+    }
+  }
+
+  if (cityChart) {
+    const existingCityChart = Chart.getChart("cityChart");
+    if (existingCityChart) {
+      existingCityChart.destroy();
+    }
+  }
+
   // Requests by type chart
   const typeCounts = {};
   requests.forEach((r) => {
     typeCounts[r.complaint_type] = (typeCounts[r.complaint_type] || 0) + 1;
   });
 
-  const typeChart = document.getElementById("typeChart");
   if (typeChart && window.Chart) {
     new Chart(typeChart, {
       type: "doughnut",
@@ -274,7 +942,6 @@ function updateCharts(requests) {
     cityCounts[r.city] = (cityCounts[r.city] || 0) + 1;
   });
 
-  const cityChart = document.getElementById("cityChart");
   if (cityChart && window.Chart) {
     new Chart(cityChart, {
       type: "bar",
@@ -307,6 +974,12 @@ function updateCharts(requests) {
 
 function updateRequestsTable(requests) {
   const tbody = document.querySelector("#requests-table tbody");
+
+  if (!tbody) {
+    console.error("❌ Table body not found!");
+    return;
+  }
+
   const recentRequests = requests.slice(0, 15);
 
   tbody.innerHTML = recentRequests
@@ -319,15 +992,30 @@ function updateRequestsTable(requests) {
             <td><span class="severity-badge ${req.severity.toLowerCase()}">${
         req.severity
       }</span></td>
-            <td><span class="status-badge ${req.status
-              .toLowerCase()
-              .replace(" ", "-")}">${req.status}</span></td>
+            <td>
+                <select 
+                  class="status-select" 
+                  data-request-id="${req.request_id}"
+                  onchange="updateRequestStatus(this)">
+                    <option value="Open" ${
+                      req.status === "Open" ? "selected" : ""
+                    }>🟡 Open</option>
+                    <option value="In Progress" ${
+                      req.status === "In Progress" ? "selected" : ""
+                    }>🔵 In Progress</option>
+                    <option value="Resolved" ${
+                      req.status === "Resolved" ? "selected" : ""
+                    }>🟢 Resolved</option>
+                </select>
+            </td>
             <td>${req.affected_count.toLocaleString()}</td>
             <td>${req.department}</td>
         </tr>
     `
     )
     .join("");
+
+  console.log(`✅ Table updated with ${recentRequests.length} requests`);
 }
 
 // Analytics Page
@@ -1096,88 +1784,267 @@ function displayForecastResults(forecast) {
 }
 
 // Handle Complaint Submission
+
 async function handleComplaintSubmission(e) {
   e.preventDefault();
 
   const formData = new FormData(e.target);
   const data = Object.fromEntries(formData.entries());
 
-  // Generate request ID
-  const { count } = await supabaseClient
-    .from("citizen_requests")
-    .select("*", { count: "exact", head: true });
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const resultDiv = document.getElementById("submission-result");
 
-  const requestId = `R${String(count + 1).padStart(3, "0")}`;
+  // Disable button and show loading
+  const originalBtnText = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.style.opacity = "0.6";
+  submitBtn.style.cursor = "not-allowed";
 
-  // Department mapping
-  const deptMapping = {
-    "Water Supply": "Water Department",
-    Electricity: "MSEDCL",
-    "Road Repair": "PWD",
-    Healthcare: "Health Department",
-    "Garbage Collection": "Sanitation Department",
-    "Street Lights": "Municipal Corporation",
-    Drainage: "PWD",
-    "Public Transport": "Transport Department",
-  };
+  // Show animated loading
+  resultDiv.innerHTML = `
+    <div class="ai-loading-container">
+      <div class="ai-loading-header">
+        <div class="ai-spinner"></div>
+        <h3 id="submission-loading-title">📝 Submitting Your Complaint...</h3>
+      </div>
+      <div class="loading-progress-bar">
+        <div class="loading-progress-fill" id="submission-progress-fill"></div>
+      </div>
+      <p class="loading-subtitle" id="submission-loading-subtitle">Preparing data...</p>
+      <div class="loading-stats">
+        <span id="submission-loading-stat">0%</span>
+      </div>
+    </div>
+  `;
+  resultDiv.style.display = "block";
 
-  const requestData = {
-    request_id: requestId,
-    citizen_name_hash: hashData(data.name),
-    phone_hash: hashData(data.phone),
-    email: data.email || `citizen${count + 1}@example.com`,
-    complaint_type: data.complaint_type,
-    description: data.description,
-    city: data.city,
-    ward: data.ward,
-    district: data.city,
-    severity: data.severity,
-    status: "Open",
-    affected_count: parseInt(data.affected_count),
-    department: deptMapping[data.complaint_type],
-    date_submitted: new Date().toISOString(),
-  };
+  // Animation stages
+  const stages = [
+    {
+      title: "🔐 Validating information...",
+      subtitle: "Checking complaint details",
+      duration: 800,
+      progress: 20,
+    },
+    {
+      title: "🗄️ Connecting to database...",
+      subtitle: "Establishing secure connection",
+      duration: 1000,
+      progress: 40,
+    },
+    {
+      title: "📊 Generating Request ID...",
+      subtitle: "Creating unique identifier",
+      duration: 800,
+      progress: 60,
+    },
+    {
+      title: "🏛️ Assigning to department...",
+      subtitle: `Routing to ${data.complaint_type} team`,
+      duration: 1000,
+      progress: 80,
+    },
+    {
+      title: "✅ Finalizing submission...",
+      subtitle: "Saving your complaint",
+      duration: 800,
+      progress: 95,
+    },
+  ];
 
   try {
+    // Ensure Supabase is initialized
+    if (!supabaseClient) {
+      console.error("❌ Supabase not initialized! Initializing now...");
+      const supabaseUrl = "https://xyvlblrsndudtqqxhqtj.supabase.co";
+      const supabaseKey =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dmxibHJzbmR1ZHRxcXhocXRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyMDU1NTMsImV4cCI6MjA3ODc4MTU1M30.bQzDc276wj2QDgeEVU2d-glLTQnBNq4qrjTw9oyEmY0";
+      supabaseClient = createClient(supabaseUrl, supabaseKey);
+      console.log("✅ Supabase initialized in handleComplaintSubmission");
+    }
+
+    // Animate through stages while processing
+    const animationPromise = (async () => {
+      for (let i = 0; i < stages.length; i++) {
+        await animateSubmissionStage(stages[i]);
+      }
+    })();
+
+    console.log("📝 Submitting complaint...", data);
+
+    // Generate request ID
+    const { count, error: countError } = await supabaseClient
+      .from("citizen_requests")
+      .select("*", { count: "exact", head: true });
+
+    if (countError) {
+      console.error("Count error:", countError);
+      throw countError;
+    }
+
+    const requestId = `R${String((count || 0) + 1).padStart(3, "0")}`;
+
+    // Department mapping
+    const deptMapping = {
+      "Water Supply": "Water Department",
+      Electricity: "MSEDCL",
+      "Road Repair": "PWD",
+      Healthcare: "Health Department",
+      "Garbage Collection": "Sanitation Department",
+      "Street Lights": "Municipal Corporation",
+      Drainage: "PWD",
+      "Public Transport": "Transport Department",
+    };
+
+    const requestData = {
+      request_id: requestId,
+      citizen_name_hash: hashData(data.name),
+      phone_hash: hashData(data.phone),
+      email: data.email || `citizen${(count || 0) + 1}@example.com`,
+      complaint_type: data.complaint_type,
+      description: data.description,
+      city: data.city,
+      ward: data.ward,
+      district: data.city,
+      severity: data.severity,
+      status: "Open",
+      affected_count: parseInt(data.affected_count),
+      department: deptMapping[data.complaint_type],
+      date_submitted: new Date().toISOString(),
+    };
+
+    console.log("📤 Inserting request:", requestData);
+
+    // Insert into database
     const { error } = await supabaseClient
       .from("citizen_requests")
       .insert([requestData]);
 
-    if (error) throw error;
+    if (error) {
+      console.error("Insert error:", error);
+      throw error;
+    }
 
+    // Wait for animation to complete
+    await animationPromise;
+
+    // Final completion stage
+    document.getElementById("submission-loading-title").innerHTML =
+      "🎉 Submission Complete!";
+    document.getElementById("submission-loading-subtitle").innerHTML =
+      "Your complaint has been registered";
+    document.getElementById("submission-loading-stat").innerHTML = "100%";
+    document.getElementById("submission-progress-fill").style.width = "100%";
+
+    await sleep(800);
+
+    console.log("✅ Complaint submitted successfully!");
     showSubmissionSuccess(requestId, requestData.department);
     e.target.reset();
   } catch (error) {
     console.error("Submission error:", error);
-    showSubmissionError();
+    showSubmissionError(error.message);
+  } finally {
+    // Re-enable button
+    submitBtn.disabled = false;
+    submitBtn.style.opacity = "1";
+    submitBtn.style.cursor = "pointer";
+    submitBtn.innerHTML = originalBtnText;
   }
+}
+
+// Helper function for submission stage animation
+async function animateSubmissionStage(stage) {
+  document.getElementById("submission-loading-title").innerHTML = stage.title;
+  document.getElementById("submission-loading-subtitle").innerHTML =
+    stage.subtitle;
+  document.getElementById("submission-loading-stat").innerHTML =
+    stage.progress + "%";
+
+  const progressBar = document.getElementById("submission-progress-fill");
+  progressBar.style.width = stage.progress + "%";
+
+  await sleep(stage.duration);
+}
+
+// Helper function for submission stage animation
+async function animateSubmissionStage(stage) {
+  document.getElementById("submission-loading-title").innerHTML = stage.title;
+  document.getElementById("submission-loading-subtitle").innerHTML =
+    stage.subtitle;
+  document.getElementById("submission-loading-stat").innerHTML =
+    stage.progress + "%";
+
+  const progressBar = document.getElementById("submission-progress-fill");
+  progressBar.style.width = stage.progress + "%";
+
+  await sleep(stage.duration);
 }
 
 function showSubmissionSuccess(requestId, department) {
   const resultDiv = document.getElementById("submission-result");
   resultDiv.innerHTML = `
-        <div class="alert-success">
-            <h3>Complaint Submitted Successfully!</h3>
-            <p><strong>Request ID:</strong> ${requestId}</p>
-            <p><strong>Department:</strong> ${department}</p>
-            <p><strong>Status:</strong> Open</p>
-            <p>Your complaint has been registered and assigned to the concerned department. You will receive updates via SMS/Email.</p>
-            <p><strong>Estimated Response Time:</strong> 2-3 business days</p>
+    <div class="alert-success" style="animation: slideInFromTop 0.5s ease-out;">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div style="flex: 1;">
+          <h3>✅ Complaint Submitted Successfully!</h3>
+          <p><strong>Request ID:</strong> ${requestId}</p>
+          <p><strong>Department:</strong> ${department}</p>
+          <p><strong>Status:</strong> Open</p>
+          <p>Your complaint has been registered and assigned to the concerned department. You will receive updates via SMS/Email.</p>
+          <p><strong>Estimated Response Time:</strong> 2-3 business days</p>
         </div>
-    `;
+        <button onclick="this.parentElement.parentElement.parentElement.style.display='none'" 
+                style="background: none; border: none; font-size: 24px; cursor: pointer; color: #065f46; padding: 0 10px;">
+          ×
+        </button>
+      </div>
+    </div>
+  `;
   resultDiv.style.display = "block";
+
+  // Auto-dismiss after 6 seconds
+  setTimeout(() => {
+    resultDiv.style.transition = "opacity 0.5s ease-out";
+    resultDiv.style.opacity = "0";
+    setTimeout(() => {
+      resultDiv.style.display = "none";
+      resultDiv.style.opacity = "1"; // Reset for next time
+    }, 500);
+  }, 6000);
 }
 
-function showSubmissionError() {
+function showSubmissionError(errorMsg) {
   const resultDiv = document.getElementById("submission-result");
   resultDiv.innerHTML = `
-        <div class="alert-error">
-            <p>Error submitting complaint. Please try again or contact support.</p>
+    <div class="alert-error" style="animation: slideInFromTop 0.5s ease-out;">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div style="flex: 1;">
+          <h3>❌ Submission Failed</h3>
+          <p><strong>Error:</strong> ${errorMsg || "Unknown error occurred"}</p>
+          <p style="margin-top: 10px;">Please check your internet connection and try again. If the problem persists, contact support.</p>
         </div>
-    `;
+        <button onclick="this.parentElement.parentElement.parentElement.style.display='none'" 
+                style="background: none; border: none; font-size: 24px; cursor: pointer; color: #dc2626; padding: 0 10px;">
+          ×
+        </button>
+      </div>
+    </div>
+  `;
   resultDiv.style.display = "block";
+
+  // Auto-dismiss after 7 seconds (errors stay slightly longer)
+  setTimeout(() => {
+    resultDiv.style.transition = "opacity 0.5s ease-out";
+    resultDiv.style.opacity = "0";
+    setTimeout(() => {
+      resultDiv.style.display = "none";
+      resultDiv.style.opacity = "1";
+    }, 500);
+  }, 7000);
 }
 
+// Handle Track Request
 // Handle Track Request
 async function handleTrackRequest() {
   const requestId = document.getElementById("track-request-id").value.trim();
@@ -1187,14 +2054,29 @@ async function handleTrackRequest() {
     return;
   }
 
+  const resultDiv = document.getElementById("tracking-result");
+
+  // Show loading
+  resultDiv.innerHTML = `
+    <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+      <p>🔄 Searching for ${requestId}...</p>
+    </div>
+  `;
+  resultDiv.style.display = "block";
+
   try {
     const { data: request, error } = await supabaseClient
       .from("citizen_requests")
       .select("*")
       .eq("request_id", requestId)
-      .single();
+      .maybeSingle(); // Use maybeSingle instead of single
 
-    if (error || !request) {
+    if (error) {
+      console.error("Query error:", error);
+      throw error;
+    }
+
+    if (!request) {
       showTrackingError(requestId);
       return;
     }
@@ -1208,35 +2090,135 @@ async function handleTrackRequest() {
 
 function showTrackingResult(request) {
   const resultDiv = document.getElementById("tracking-result");
+
   const statusIcons = {
     Open: "🟡",
     "In Progress": "🔵",
     Resolved: "🟢",
   };
 
+  const statusColors = {
+    Open: "#fbbf24",
+    "In Progress": "#3b82f6",
+    Resolved: "#10b981",
+  };
+
+  const statusMessages = {
+    Open: "Your complaint is in queue. Expected action within 2-3 days.",
+    "In Progress":
+      "Your complaint is being actively processed by the department.",
+    Resolved: "Your complaint has been successfully resolved.",
+  };
+
+  // Format submitted date
+  const submittedDate = new Date(request.date_submitted).toLocaleDateString(
+    "en-IN",
+    {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }
+  );
+
+  // Show resolved date if exists
+  let resolvedDateHtml = "";
+  if (request.resolved_date) {
+    const resolvedDate = new Date(request.resolved_date).toLocaleDateString(
+      "en-IN",
+      {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }
+    );
+    resolvedDateHtml = `<p><strong>✅ Resolved Date:</strong> ${resolvedDate}</p>`;
+  }
+
   resultDiv.innerHTML = `
-        <div class="alert-success">
-            <h3>${statusIcons[request.status]} Status: ${request.status}</h3>
-            <p><strong>Complaint Type:</strong> ${request.complaint_type}</p>
-            <p><strong>Location:</strong> ${request.city}, ${request.ward}</p>
-            <p><strong>Department:</strong> ${request.department}</p>
-            <p><strong>Submitted:</strong> ${new Date(
-              request.date_submitted
-            ).toLocaleDateString()}</p>
-            <p><strong>Severity:</strong> ${request.severity}</p>
-            <p><strong>Description:</strong> ${request.description}</p>
-            ${
-              request.status === "Resolved"
-                ? `<p><strong>Resolved Date:</strong> ${new Date(
-                    request.resolved_date
-                  ).toLocaleDateString()}</p>`
-                : request.status === "In Progress"
-                ? "<p>Your complaint is being processed by the department</p>"
-                : "<p>Your complaint is in queue. Expected action within 2-3 days.</p>"
-            }
+    <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 20px;">
+      
+      <div style="padding: 24px; background: ${
+        statusColors[request.status]
+      }; color: white; display: flex; align-items: center; gap: 15px;">
+        <span style="font-size: 36px;">${statusIcons[request.status]}</span>
+        <h3 style="margin: 0; font-size: 24px;">Status: ${request.status}</h3>
+      </div>
+      
+      <div style="padding: 24px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 24px;">
+          
+          <div>
+            <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Request ID</div>
+            <div style="font-size: 16px; color: #1e293b; font-weight: 600;">${
+              request.request_id
+            }</div>
+          </div>
+          
+          <div>
+            <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Complaint Type</div>
+            <div style="font-size: 16px; color: #1e293b; font-weight: 600;">${
+              request.complaint_type
+            }</div>
+          </div>
+          
+          <div>
+            <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Location</div>
+            <div style="font-size: 16px; color: #1e293b; font-weight: 600;">${
+              request.city
+            }, ${request.ward}</div>
+          </div>
+          
+          <div>
+            <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Department</div>
+            <div style="font-size: 16px; color: #1e293b; font-weight: 600;">${
+              request.department
+            }</div>
+          </div>
+          
+          <div>
+            <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Severity</div>
+            <div><span class="severity-badge ${request.severity.toLowerCase()}">${
+    request.severity
+  }</span></div>
+          </div>
+          
+          <div>
+            <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Submitted</div>
+            <div style="font-size: 16px; color: #1e293b; font-weight: 600;">${submittedDate}</div>
+          </div>
+          
         </div>
-    `;
+        
+        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <strong style="display: block; margin-bottom: 8px;">Description:</strong>
+          <p style="margin: 0;">${request.description}</p>
+        </div>
+        
+        ${resolvedDateHtml}
+        
+        <div style="padding: 16px; border-radius: 8px; text-align: center; margin-top: 20px; background: ${
+          statusColors[request.status]
+        }22; color: ${statusColors[request.status]};">
+          <strong>${statusIcons[request.status]} ${
+    statusMessages[request.status]
+  }</strong>
+        </div>
+      </div>
+      
+    </div>
+  `;
+
   resultDiv.style.display = "block";
+
+  // Auto-dismiss after 7 seconds
+  setTimeout(() => {
+    resultDiv.style.transition = "opacity 0.5s ease-out";
+    resultDiv.style.opacity = "0";
+    setTimeout(() => {
+      resultDiv.style.display = "none";
+      resultDiv.style.opacity = "1";
+    }, 500);
+  }, 7000);
 }
 
 function showTrackingError(requestId) {
@@ -1360,8 +2342,8 @@ function generateFallbackPrediction(request) {
  * Call real Google Gemini API for 7-Day Forecast
  */
 async function generateFallbackForecast(requests) {
-  const GEMINI_API_KEY = "AIzaSyBYWCBezyksKzEsR76gfy8Y-doepTVrWJ4";
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  // No API key needed! Using backend proxy
+  const API_URL = "/api/gemini";
 
   // Prepare summary data from requests
   const typeCounts = {};
@@ -1554,7 +2536,30 @@ function downloadCSV(csv, filename) {
 }
 
 function showError(message) {
-  alert(message);
+  // CRITICAL FIX 7: Better error display
+  const errorDiv = document.createElement("div");
+  errorDiv.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #dc2626;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.3);
+    font-weight: 600;
+    z-index: 10000;
+    border-left: 5px solid #dc2626;
+    max-width: 400px;
+  `;
+  errorDiv.innerHTML = `❌ ${message}`;
+  document.body.appendChild(errorDiv);
+
+  setTimeout(() => {
+    errorDiv.style.opacity = "0";
+    errorDiv.style.transition = "opacity 0.3s";
+    setTimeout(() => errorDiv.remove(), 300);
+  }, 4000);
 }
 
 function showSampleData() {
@@ -1590,10 +2595,13 @@ function showSampleData() {
 }
 
 // Initialize app when DOM is loaded
+// Initialize when page loads
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initApp);
+  document.addEventListener("DOMContentLoaded", function () {
+    checkExistingSession();
+  });
 } else {
-  initApp();
+  checkExistingSession();
 }
 
 // ============================================
@@ -1612,8 +2620,8 @@ if (document.readyState === "loading") {
  * - HTTP referrer restriction: maharashtra-governance-ai.vercel.app
  */
 async function callRealGeminiAPI(requestData) {
-  const GEMINI_API_KEY = "AIzaSyBYWCBezyksKzEsR76gfy8Y-doepTVrWJ4";
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  // No API key needed! Using backend proxy
+  const API_URL = "/api/gemini";
 
   const prompt = `You are an AI system for Maharashtra Government's predictive governance platform.
 
@@ -1829,4 +2837,162 @@ async function hybridAnalyzeComplaint(requestData) {
   // Fallback to smart dynamic
   console.log("🔄 Using smart dynamic fallback");
   return generateSmartDynamicPrediction(requestData);
+}
+async function updateRequestStatus(selectElement) {
+  const requestId = selectElement.dataset.requestId;
+  const newStatus = selectElement.value;
+
+  console.log("🔍 Updating:", requestId, "to", newStatus);
+
+  const originalValue =
+    selectElement.dataset.originalValue || selectElement.value;
+  selectElement.dataset.originalValue = originalValue;
+  selectElement.disabled = true;
+
+  try {
+    // Prepare update data
+    const updateData = {
+      status: newStatus,
+      resolved_date: newStatus === "Resolved" ? new Date().toISOString() : null,
+    };
+
+    console.log("📦 Sending to database:", updateData);
+
+    // CRITICAL FIX: Use .match() to update specific row
+    const { data, error, count } = await supabaseClient
+      .from("citizen_requests")
+      .update(updateData)
+      .eq("request_id", requestId)
+      .select();
+
+    console.log("📊 Response:", { data, error, count });
+
+    if (error) {
+      console.error("❌ Database error:", error);
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    // Check if any rows were updated
+    if (!data || data.length === 0) {
+      throw new Error(
+        `No rows updated. Request ${requestId} might not exist or RLS policy is blocking updates.`
+      );
+    }
+
+    // Verify the status actually changed
+    if (data[0].status !== newStatus) {
+      throw new Error(
+        `Update failed: Status is still "${data[0].status}" instead of "${newStatus}"`
+      );
+    }
+
+    console.log("✅ Update successful! New status:", data[0].status);
+
+    selectElement.dataset.originalValue = newStatus;
+    showStatusUpdateSuccess(requestId, newStatus);
+
+    // Refresh dashboard after 1.5 seconds
+    setTimeout(() => {
+      console.log("🔄 Refreshing dashboard...");
+      loadDashboardData();
+    }, 1500);
+  } catch (error) {
+    console.error("❌ Update failed:", error);
+    selectElement.value = originalValue;
+
+    alert(
+      `Failed to update status for ${requestId}:\n\n${error.message}\n\n` +
+        `This is likely a database permission issue. Check your Supabase RLS policies.`
+    );
+  } finally {
+    selectElement.disabled = false;
+  }
+}
+
+function showStatusUpdateSuccess(requestId, newStatus) {
+  // Create notification box
+  const notification = document.createElement("div");
+  notification.style.cssText = `
+    position: fixed;
+    top: 100px;
+    right: 30px;
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+    font-weight: 600;
+    font-size: 15px;
+    z-index: 1000;
+    border-left: 5px solid #10b981;
+  `;
+
+  notification.innerHTML = `✅ ${requestId} updated to <strong>${newStatus}</strong>`;
+
+  // Add to page
+  document.body.appendChild(notification);
+
+  // Remove after 3 seconds
+  setTimeout(() => {
+    notification.style.opacity = "0";
+    notification.style.transition = "opacity 0.3s";
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+
+// Test function - run this in browser console: testEverything()
+function testEverything() {
+  console.log("🧪 Running tests...");
+
+  // Test 1
+  if (typeof updateRequestStatus === "function") {
+    console.log("✅ updateRequestStatus exists");
+  } else {
+    console.error("❌ updateRequestStatus missing!");
+  }
+
+  // Test 2
+  if (typeof showStatusUpdateSuccess === "function") {
+    console.log("✅ showStatusUpdateSuccess exists");
+  } else {
+    console.error("❌ showStatusUpdateSuccess missing!");
+  }
+
+  // Test 3
+  if (supabaseClient) {
+    console.log("✅ Supabase connected");
+  } else {
+    console.error("❌ Supabase not connected!");
+  }
+
+  // Test 4
+  const dropdowns = document.querySelectorAll(".status-select");
+  console.log(`✅ Found ${dropdowns.length} status dropdowns`);
+
+  console.log("✅ All tests complete!");
+}
+
+// Auto-run test after 2 seconds
+setTimeout(testEverything, 2000);
+
+async function debugCheckStatus(requestId) {
+  const { data, error } = await supabaseClient
+    .from("citizen_requests")
+    .select("request_id, status, resolved_date")
+    .eq("request_id", requestId)
+    .single();
+
+  console.log("🔍 Current database status:", data);
+  return data;
+}
+
+// Use in console: debugCheckStatus("R051")
+
+// Initialize when page loads
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", function () {
+    checkExistingSession();
+  });
+} else {
+  checkExistingSession();
 }
