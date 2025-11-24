@@ -12,150 +12,170 @@
     
 <body>
   <!-- ============ LOGIN SECTION ============ -->
-  <section id="login-section" class="login-section">
-    <div class="login-container">
-      <div class="login-header">
-        <div class="logo-emblem" style="font-size: 80px;">🏛️</div>
-        <h1>Maharashtra AI Governance Platform</h1>
-        <p>Transforming Citizen Service Delivery</p>
+<!-- ============ LOGIN SECTION ============ -->
+<section id="login-section" class="login-section">
+  <div class="login-container-horizontal">
+    
+    <!-- Left Side - Branding -->
+    <div class="login-brand">
+      <div class="brand-content">
+        <div class="logo-emblem-large">🏛️</div>
+        <h1>Maharashtra AI</h1>
+        <h2>Governance Platform</h2>
+        <p>Transforming Citizen Service Delivery through Predictive Intelligence</p>
+        
+        <div class="brand-features">
+          <div class="feature-item">
+            <span class="feature-icon">🤖</span>
+            <span>AI-Powered Analytics</span>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">🔒</span>
+            <span>Secure & Encrypted</span>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">⚡</span>
+            <span>Real-time Updates</span>
+          </div>
+        </div>
       </div>
-
-      <!-- Login/Signup Toggle -->
-      <div class="auth-tabs">
-        <button class="auth-tab active" data-auth="login" onclick="switchAuthTab('login')">Login</button>
-        <button class="auth-tab" data-auth="signup" onclick="switchAuthTab('signup')">Sign Up</button>
-      </div>
-
-      <!-- ========== LOGIN FORM ========== -->
-      <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
-        
-        <!-- Role Selection for Login -->
-        <div class="role-selector">
-          <label class="role-option">
-            <input type="radio" name="login-role" value="citizen" checked onchange="toggleLoginFields()">
-            <span class="role-card">
-              <span class="role-icon">👤</span>
-              <span class="role-name">Citizen</span>
-            </span>
-          </label>
-          <label class="role-option">
-            <input type="radio" name="login-role" value="official" onchange="toggleLoginFields()">
-            <span class="role-card">
-              <span class="role-icon">🏛️</span>
-              <span class="role-name">Official</span>
-            </span>
-          </label>
-        </div>
-
-        <!-- Citizen Login Fields -->
-        <div id="citizen-login-fields">
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="login-email" placeholder="Enter your email">
-          </div>
-
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="login-password" placeholder="Enter your password">
-          </div>
-        </div>
-
-        <!-- Official Login Fields (Just Code) -->
-        <div id="official-login-fields" style="display: none;">
-          <div class="form-group">
-            <label>👤 Official Name</label>
-            <input type="text" id="official-login-name" placeholder="Enter your name">
-          </div>
-
-          <div class="form-group">
-            <label>🔐 Access Code</label>
-            <input type="password" id="official-login-code" placeholder="Enter admin code">
-          </div>
-
-          <div class="info-box" style="margin-top: 15px; font-size: 0.85rem;">
-            <strong>Valid Codes:</strong> GOV2024, MAHA2024, ADMIN123
-          </div>
-        </div>
-
-        <button type="submit" class="auth-btn">Login</button>
-        
-        <p class="auth-error" id="login-error"></p>
-      </form>
-
-      <!-- ========== SIGNUP FORM ========== -->
-      <form id="signup-form" class="auth-form" onsubmit="handleSignup(event)">
-        
-        <!-- Role Selection for Signup -->
-        <div class="role-selector">
-          <label class="role-option">
-            <input type="radio" name="signup-role" value="citizen" checked onchange="toggleSignupFields()">
-            <span class="role-card">
-              <span class="role-icon">👤</span>
-              <span class="role-name">Citizen</span>
-            </span>
-          </label>
-          <label class="role-option">
-            <input type="radio" name="signup-role" value="official" onchange="toggleSignupFields()">
-            <span class="role-card">
-              <span class="role-icon">🏛️</span>
-              <span class="role-name">Official</span>
-            </span>
-          </label>
-        </div>
-
-        <!-- Citizen Signup Fields -->
-        <div id="citizen-signup-fields">
-          <div class="form-group">
-            <label>Full Name</label>
-            <input type="text" id="signup-name" placeholder="Enter your full name">
-          </div>
-
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="signup-email" placeholder="Enter your email">
-          </div>
-
-          <div class="form-group">
-            <label>Phone</label>
-            <input type="tel" id="signup-phone" placeholder="Enter your phone number">
-          </div>
-
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="signup-password" placeholder="Create a password (min 6 chars)" minlength="6">
-          </div>
-
-          <div class="form-group">
-            <label>Confirm Password</label>
-            <input type="password" id="signup-confirm" placeholder="Confirm your password">
-          </div>
-        </div>
-
-        <!-- Official Signup Message (No Signup for Officials) -->
-<!-- Official Signup Message (No Signup for Officials) -->
-<div id="official-signup-message" style="display: none;">
-  <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 5px solid #f59e0b; padding: 25px; border-radius: 12px; text-align: center;">
-    <div style="font-size: 3em; margin-bottom: 15px;">🏛️</div>
-    <h4 style="margin: 0 0 15px 0; color: #92400e; font-size: 1.3em;">Officials Cannot Sign Up</h4>
-    <p style="margin: 0 0 20px 0; color: #78350f; line-height: 1.6;">
-      Government officials have pre-assigned access codes.<br>
-      Please use the <strong>Login</strong> page with your official access code.
-    </p>
-    <button type="button" class="auth-btn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); margin-top: 10px;" onclick="switchAuthTab('login'); setTimeout(() => { document.querySelector('input[name=login-role][value=official]').click(); }, 100);">
-      🔐 Go to Official Login
-    </button>
-    <p style="margin: 15px 0 0 0; font-size: 0.85em; color: #92400e;">
-      <strong>Valid Access Codes:</strong> GOV2024, MAHA2024, ADMIN123
-    </p>
-  </div>
-</div>
-
-        <button type="submit" class="auth-btn" id="citizen-signup-btn">Create Account</button>
-        
-        <p class="auth-error" id="signup-error"></p>
-      </form>
     </div>
-  </section>
+
+    <!-- Right Side - Authentication -->
+    <div class="login-forms">
+      
+      <!-- Role Selection -->
+      <div class="role-selection-header">
+        <h3>Welcome Back</h3>
+        <p>Select your role to continue</p>
+      </div>
+
+      <div class="role-selector-horizontal">
+        <label class="role-option-horizontal">
+          <input type="radio" name="user-role" value="citizen" checked onchange="switchRole()">
+          <div class="role-card-horizontal">
+            <div class="role-icon-large">👤</div>
+            <div class="role-details">
+              <h4>Citizen</h4>
+              <p>Submit & track requests</p>
+            </div>
+          </div>
+        </label>
+
+        <label class="role-option-horizontal">
+          <input type="radio" name="user-role" value="official" onchange="switchRole()">
+          <div class="role-card-horizontal">
+            <div class="role-icon-large">🏛️</div>
+            <div class="role-details">
+              <h4>Official</h4>
+              <p>Dashboard access</p>
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Citizen Forms (Login + Signup Toggle) -->
+      <div id="citizen-auth-section" class="auth-section">
+        
+        <!-- Toggle Tabs for Citizen -->
+        <div class="auth-toggle">
+          <button class="toggle-btn active" data-form="citizen-login" onclick="switchCitizenForm('citizen-login')">Login</button>
+          <button class="toggle-btn" data-form="citizen-signup" onclick="switchCitizenForm('citizen-signup')">Sign Up</button>
+        </div>
+
+        <!-- Citizen Login Form -->
+        <form id="citizen-login" class="auth-form-content active" onsubmit="handleCitizenLogin(event)">
+          <div class="form-group-compact">
+            <label>Email Address</label>
+            <input type="email" id="citizen-login-email" placeholder="your.email@example.com" required>
+          </div>
+
+          <div class="form-group-compact">
+            <label>Password</label>
+            <input type="password" id="citizen-login-password" placeholder="Enter password" required>
+          </div>
+
+          <button type="submit" class="auth-btn-primary">
+            <span>Login to Portal</span>
+            <span>→</span>
+          </button>
+
+          <p class="auth-error" id="citizen-login-error"></p>
+        </form>
+
+        <!-- Citizen Signup Form -->
+        <form id="citizen-signup" class="auth-form-content" onsubmit="handleCitizenSignup(event)">
+          <div class="form-row-compact">
+            <div class="form-group-compact">
+              <label>Full Name</label>
+              <input type="text" id="citizen-signup-name" placeholder="John Doe" required>
+            </div>
+            <div class="form-group-compact">
+              <label>Phone Number</label>
+              <input type="tel" id="citizen-signup-phone" placeholder="10-digit number" required minlength="10" maxlength="10">
+            </div>
+          </div>
+
+          <div class="form-group-compact">
+            <label>Email Address</label>
+            <input type="email" id="citizen-signup-email" placeholder="your.email@example.com" required>
+          </div>
+
+          <div class="form-row-compact">
+            <div class="form-group-compact">
+              <label>Password</label>
+              <input type="password" id="citizen-signup-password" placeholder="Min 6 characters" required minlength="6">
+            </div>
+            <div class="form-group-compact">
+              <label>Confirm Password</label>
+              <input type="password" id="citizen-signup-confirm" placeholder="Confirm password" required>
+            </div>
+          </div>
+
+          <button type="submit" class="auth-btn-primary">
+            <span>Create Account</span>
+            <span>→</span>
+          </button>
+
+          <p class="auth-error" id="citizen-signup-error"></p>
+        </form>
+      </div>
+
+      <!-- Official Login Form (No Signup) -->
+      <div id="official-auth-section" class="auth-section" style="display: none;">
+        <div class="official-header">
+          <h4>🔐 Official Access</h4>
+          <p>Login with your government credentials</p>
+        </div>
+
+        <form id="official-login" class="auth-form-content active" onsubmit="handleOfficialLogin(event)">
+          <div class="form-group-compact">
+            <label>Official Name</label>
+            <input type="text" id="official-login-name" placeholder="Enter your name" required>
+          </div>
+
+          <div class="form-group-compact">
+            <label>Access Code</label>
+            <input type="password" id="official-login-code" placeholder="Enter admin code" required>
+          </div>
+
+          <!-- <div class="info-note">
+            <span>💡</span>
+            <span>Valid codes: <strong>GOV2024</strong>, <strong>MAHA2024</strong>, <strong>ADMIN123</strong></span>
+          </div> -->
+
+          <button type="submit" class="auth-btn-primary official">
+            <span>Access Dashboard</span>
+            <span>→</span>
+          </button>
+
+          <p class="auth-error" id="official-login-error"></p>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</section>
 
   <!-- ============ MAIN APP (Hidden until login) ============ -->
   <section id="main-app" class="main-app" style="display: none;">
