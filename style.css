@@ -2061,3 +2061,6 @@ body {
   }
 }
 
+.auth-error {
+  transition: opacity 0.3s ease;
+}
