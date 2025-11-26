@@ -21,13 +21,102 @@ const VALID_ADMIN_CODES = ["GOV2024", "MAHA2024", "ADMIN123"];
 function switchRole() {
   const role = document.querySelector('input[name="user-role"]:checked').value;
 
+  // Clear all error messages
+  clearAllErrors();
+
+  // Get all form elements
+  const citizenLogin = document.getElementById("citizen-login");
+  const citizenSignup = document.getElementById("citizen-signup");
+  const officialLogin = document.getElementById("official-login");
+
+  // Reset all forms
+  if (citizenLogin) citizenLogin.reset();
+  if (citizenSignup) citizenSignup.reset();
+  if (officialLogin) officialLogin.reset();
+
+  // Get section containers
+  const citizenSection = document.getElementById("citizen-auth-section");
+  const officialSection = document.getElementById("official-auth-section");
+
   if (role === "citizen") {
-    document.getElementById("citizen-auth-section").style.display = "block";
-    document.getElementById("official-auth-section").style.display = "none";
+    // Show citizen section
+    citizenSection.style.display = "block";
+    citizenSection.style.visibility = "visible";
+    citizenSection.style.opacity = "1";
+
+    // Hide official section
+    officialSection.style.display = "none";
+
+    // Make sure login is active by default for citizens
+    switchCitizenForm("citizen-login");
   } else {
-    document.getElementById("citizen-auth-section").style.display = "none";
-    document.getElementById("official-auth-section").style.display = "block";
+    // Hide citizen section
+    citizenSection.style.display = "none";
+
+    // Show official section with all fields visible
+    officialSection.style.display = "block";
+    officialSection.style.visibility = "visible";
+    officialSection.style.opacity = "1";
+
+    // Make sure all input fields in official form are visible
+    const officialInputs = officialSection.querySelectorAll("input");
+    officialInputs.forEach((input) => {
+      input.style.display = "block";
+      input.style.visibility = "visible";
+      input.value = ""; // Clear any pre-filled values
+    });
+
+    // Make sure the form itself is visible
+    if (officialLogin) {
+      officialLogin.style.display = "block";
+      officialLogin.classList.add("active");
+    }
   }
+}
+
+// Force visibility check after a short delay
+function ensureFormVisibility() {
+  setTimeout(() => {
+    const role = document.querySelector(
+      'input[name="user-role"]:checked'
+    ).value;
+
+    if (role === "official") {
+      const officialSection = document.getElementById("official-auth-section");
+      const officialForm = document.getElementById("official-login");
+      const inputs = officialSection.querySelectorAll("input, label, button");
+
+      officialSection.style.display = "block";
+      if (officialForm) officialForm.style.display = "block";
+
+      inputs.forEach((el) => {
+        el.style.display =
+          el.tagName === "INPUT" || el.tagName === "BUTTON"
+            ? "block"
+            : "inline-block";
+        el.style.visibility = "visible";
+        el.style.opacity = "1";
+      });
+    }
+  }, 50);
+}
+
+// Call this after role switch
+
+function clearAllErrors() {
+  const errorElements = [
+    "citizen-login-error",
+    "citizen-signup-error",
+    "official-login-error",
+  ];
+
+  errorElements.forEach((id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = "";
+      element.classList.remove("show");
+    }
+  });
 }
 
 function switchCitizenForm(formId) {
@@ -51,6 +140,8 @@ function handleCitizenLogin(event) {
   const email = document.getElementById("citizen-login-email").value.trim();
   const password = document.getElementById("citizen-login-password").value;
   const errorEl = document.getElementById("citizen-login-error");
+  errorEl.textContent = "";
+  errorEl.classList.remove("show");
 
   errorEl.textContent = "";
   errorEl.classList.remove("show");
@@ -96,6 +187,8 @@ function handleCitizenSignup(event) {
   const password = document.getElementById("citizen-signup-password").value;
   const confirm = document.getElementById("citizen-signup-confirm").value;
   const errorEl = document.getElementById("citizen-signup-error");
+  errorEl.textContent = "";
+  errorEl.classList.remove("show");
 
   errorEl.textContent = "";
   errorEl.classList.remove("show");
@@ -163,8 +256,10 @@ function handleOfficialLogin(event) {
   const code = document.getElementById("official-login-code").value.trim();
   const errorEl = document.getElementById("official-login-error");
 
+  // IMPORTANT: Clear previous errors first
   errorEl.textContent = "";
   errorEl.classList.remove("show");
+  errorEl.style.display = "none";
 
   if (!name || name.length < 2) {
     showError(errorEl, "❌ Please enter a valid name");
@@ -172,10 +267,7 @@ function handleOfficialLogin(event) {
   }
 
   if (!VALID_ADMIN_CODES.includes(code)) {
-    showError(
-      errorEl,
-      "❌ Invalid access code. Valid codes: GOV2024, MAHA2024, or ADMIN123"
-    );
+    showError(errorEl, "❌ Invalid access code");
     return;
   }
 
@@ -193,8 +285,21 @@ function handleOfficialLogin(event) {
 
 function showError(element, message) {
   if (element && element.textContent !== undefined) {
+    // First make it visible
+    element.style.display = "block";
     element.textContent = message;
     element.classList.add("show");
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      element.classList.remove("show");
+      element.style.opacity = "0";
+      setTimeout(() => {
+        element.textContent = "";
+        element.style.display = "none";
+        element.style.opacity = "1";
+      }, 300);
+    }, 5000);
   } else {
     console.error("showError called with invalid element:", element);
     alert(message);
@@ -210,6 +315,57 @@ function checkExistingSession() {
     console.log("❌ No session found, showing login page");
   }
 }
+
+function checkExistingSession() {
+  const session = JSON.parse(localStorage.getItem("maha_session"));
+  if (session) {
+    console.log("✅ Found existing session");
+
+    // Show the existing session notice
+    document.getElementById("existing-session-notice").style.display = "block";
+    document.getElementById(
+      "session-user-name"
+    ).textContent = `${session.name} (${session.role})`;
+  } else {
+    console.log("❌ No session found, showing login page");
+  }
+}
+
+function continueSession() {
+  const session = JSON.parse(localStorage.getItem("maha_session"));
+  if (session) {
+    showMainApp(session);
+  }
+}
+
+function clearSessionAndReload() {
+  localStorage.removeItem("maha_session");
+  document.getElementById("existing-session-notice").style.display = "none";
+  alert("✅ Session cleared. You can now login with a different account.");
+}
+
+// Auto-clear errors when user starts typing
+document.addEventListener("DOMContentLoaded", () => {
+  const forms = ["citizen-login", "citizen-signup", "official-login"];
+
+  forms.forEach((formId) => {
+    const form = document.getElementById(formId);
+    if (form) {
+      const inputs = form.querySelectorAll("input");
+      inputs.forEach((input) => {
+        input.addEventListener("input", () => {
+          const errorEl = document.getElementById(`${formId}-error`);
+          if (errorEl && errorEl.classList.contains("show")) {
+            errorEl.classList.remove("show");
+            setTimeout(() => {
+              errorEl.textContent = "";
+            }, 300);
+          }
+        });
+      });
+    }
+  });
+});
 
 function showMainApp(session) {
   console.log("🚀 showMainApp called for:", session.role);
@@ -885,7 +1041,7 @@ async function handleAnalyzeRequest() {
 
   await sleep(800);
 
-  const prediction = generateSmartDynamicPrediction(window.currentRequest);
+  const prediction = await hybridAnalyzeComplaint(window.currentRequest);
   displayPredictionResultsAnimated(prediction);
 
   btn.disabled = false;
@@ -1062,58 +1218,8 @@ async function handleForecast() {
 
   await sleep(800);
 
-  const forecast = {
-    forecast_date: new Date().toISOString().split("T")[0],
-    demand_forecast: {
-      water_supply: {
-        predicted_requests: 15,
-        change_percent: 12,
-        confidence: 78,
-        trend: "Increasing",
-      },
-      healthcare: {
-        predicted_requests: 11,
-        change_percent: 8,
-        confidence: 72,
-        trend: "Stable",
-      },
-      infrastructure: {
-        predicted_requests: 18,
-        change_percent: 15,
-        confidence: 80,
-        trend: "Increasing",
-      },
-      electricity: {
-        predicted_requests: 9,
-        change_percent: 5,
-        confidence: 75,
-        trend: "Stable",
-      },
-    },
-    bottlenecks: [
-      {
-        department: "Water Department",
-        overload_percent: 65,
-        urgency: "High",
-        recommendation: "Add 10 staff members",
-      },
-    ],
-    resource_allocation: {
-      additional_staff_needed: 25,
-      budget_required_lakhs: 15,
-      priority_areas: ["Water Supply", "Infrastructure"],
-    },
-    risk_zones: [
-      {
-        location: "Mumbai",
-        risk_type: "Service Overload",
-        severity: 8,
-        action_needed: "Deploy 5 mobile units",
-      },
-    ],
-    insights:
-      "Expecting 15% increase in requests. Department reinforcement recommended.",
-  };
+  // ✅ THIS IS THE KEY LINE - Call hybrid forecast
+  const forecast = await hybridForecast([]);
 
   displayForecastResultsAnimated(forecast);
 
@@ -1738,5 +1844,296 @@ function downloadCSV(csv, filename) {
   a.click();
   window.URL.revokeObjectURL(url);
 }
+
+// ============================================
+// HYBRID GEMINI API SYSTEM - ADD THIS SECTION
+// ============================================
+
+/**
+ * Detect if running locally or on Vercel
+ */
+function getApiEndpoint() {
+  if (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+  ) {
+    return "http://localhost:3000/api/gemini";
+  }
+  return "/api/gemini";
+}
+
+/**
+ * Call Gemini API through secure serverless function
+ */
+async function callGeminiAPISecure(prompt, timeoutMs = 15000) {
+  const API_ENDPOINT = getApiEndpoint();
+
+  const requestBody = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 8192,
+      topP: 0.95,
+      topK: 40,
+    },
+  };
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    console.log(`🔄 Calling Gemini API via ${API_ENDPOINT}...`);
+
+    const response = await fetch(API_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ API Error Response:", errorText);
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("✅ Gemini API Response received!");
+
+    let text = "";
+    if (data.candidates && data.candidates.length > 0) {
+      const candidate = data.candidates[0];
+
+      if (
+        candidate.content &&
+        candidate.content.parts &&
+        candidate.content.parts.length > 0
+      ) {
+        text = candidate.content.parts[0].text || "";
+      }
+
+      if (candidate.finishReason === "MAX_TOKENS") {
+        console.warn("⚠️ Response truncated due to MAX_TOKENS");
+        throw new Error("Response truncated - MAX_TOKENS");
+      }
+    }
+
+    if (!text) {
+      throw new Error("No text in Gemini response");
+    }
+
+    console.log(
+      "📝 Extracted text from Gemini:",
+      text.substring(0, 200) + "..."
+    );
+
+    return { success: true, text: text };
+  } catch (error) {
+    if (error.name === "AbortError") {
+      console.log("⏱️ Gemini API timeout");
+    } else {
+      console.log("⚠️ Gemini API failed:", error.message);
+    }
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Parse JSON from Gemini response
+ */
+function parseGeminiJSON(text) {
+  try {
+    let cleanText = text
+      .trim()
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/gi, "")
+      .replace(/^[^{]*({)/, "$1")
+      .replace(/(})[^}]*$/, "$1");
+
+    return JSON.parse(cleanText);
+  } catch (error) {
+    console.error("❌ Failed to parse JSON:", error);
+    throw error;
+  }
+}
+
+/**
+ * HYBRID ANALYSIS - Tries Gemini API first, then fallback
+ */
+async function hybridAnalyzeComplaint(requestData) {
+  console.log("🚀 Starting hybrid complaint analysis...");
+  console.log("📊 Request data:", requestData);
+
+  const prompt = `You are an AI system for Maharashtra Government's predictive governance platform.
+
+Analyze this citizen service request:
+
+- ID: ${requestData.request_id || "N/A"}
+- Type: ${requestData.complaint_type || "N/A"}
+- Description: ${requestData.description || "N/A"}
+- Location: ${requestData.city || "N/A"}, ${requestData.ward || "N/A"}
+- Severity: ${requestData.severity || "N/A"}
+- Citizens Affected: ${requestData.affected_count || 0}
+- Department: ${requestData.department || "N/A"}
+
+Return ONLY a valid JSON object (no markdown, no backticks):
+{
+  "urgency_score": 8.5,
+  "escalation_risk_percent": 75,
+  "predicted_priority": "High",
+  "recommended_action": "Deploy emergency response team immediately",
+  "estimated_resolution_days": 3,
+  "resource_requirements": "2 field teams, 5 lakhs budget",
+  "reasoning": "Based on severity and affected population",
+  "impact_analysis": "Affects X citizens, delayed resolution increases risk"
+}`;
+
+  const apiResult = await callGeminiAPISecure(prompt);
+
+  if (apiResult.success) {
+    try {
+      const prediction = parseGeminiJSON(apiResult.text);
+      prediction.source = "gemini-api";
+      console.log("✅ SUCCESS: Using Gemini API prediction");
+      console.log("📊 Gemini result:", prediction);
+      return prediction;
+    } catch (parseError) {
+      console.error("❌ Failed to parse Gemini JSON, using fallback");
+    }
+  }
+
+  console.log("🔄 FALLBACK: Using smart dynamic prediction");
+  const fallback = generateSmartDynamicPrediction(requestData);
+  fallback.source = "smart-fallback";
+  console.log("📊 Fallback result:", fallback);
+  return fallback;
+}
+
+/**
+ * HYBRID FORECAST - Tries Gemini API first, then fallback
+ */
+async function hybridForecast(requests) {
+  console.log("🚀 Starting hybrid forecast...");
+
+  const typeCounts = {};
+  const cityCounts = {};
+  let totalAffected = 0;
+
+  if (requests && requests.length > 0) {
+    requests.forEach((req) => {
+      typeCounts[req.complaint_type] =
+        (typeCounts[req.complaint_type] || 0) + 1;
+      cityCounts[req.city] = (cityCounts[req.city] || 0) + 1;
+      totalAffected += req.affected_count || 0;
+    });
+  }
+
+  const prompt = `You are an AI forecasting system for Maharashtra Government.
+
+Analyze historical data and predict 7-day service demand:
+
+- Total Active Requests: ${requests?.length || 0}
+- Requests by Type: ${JSON.stringify(typeCounts)}
+- Requests by City: ${JSON.stringify(cityCounts)}
+- Total Citizens Affected: ${totalAffected}
+
+Return ONLY valid JSON (no markdown, no backticks):
+{
+  "forecast_date": "${new Date().toISOString().split("T")[0]}",
+  "demand_forecast": {
+    "water_supply": {"predicted_requests": 15, "change_percent": 12, "confidence": 78, "trend": "Increasing"},
+    "healthcare": {"predicted_requests": 11, "change_percent": 8, "confidence": 72, "trend": "Stable"},
+    "infrastructure": {"predicted_requests": 18, "change_percent": 15, "confidence": 80, "trend": "Increasing"},
+    "electricity": {"predicted_requests": 9, "change_percent": 5, "confidence": 75, "trend": "Stable"}
+  },
+  "bottlenecks": [{"department": "Water Department", "overload_percent": 65, "urgency": "High", "recommendation": "Add 10 staff members"}],
+  "resource_allocation": {"additional_staff_needed": 25, "budget_required_lakhs": 15, "priority_areas": ["Water Supply", "Infrastructure"]},
+  "risk_zones": [{"location": "Mumbai", "risk_type": "Service Overload", "severity": 8, "action_needed": "Deploy 5 mobile units"}],
+  "insights": "Key insights about demand trends"
+}`;
+
+  const apiResult = await callGeminiAPISecure(prompt, 20000);
+
+  if (apiResult.success) {
+    try {
+      const forecast = parseGeminiJSON(apiResult.text);
+      forecast.source = "gemini-api";
+      console.log("✅ SUCCESS: Using Gemini API forecast");
+      console.log("📊 Gemini forecast:", forecast);
+      return forecast;
+    } catch (parseError) {
+      console.error("❌ Failed to parse Gemini forecast JSON, using fallback");
+    }
+  }
+
+  console.log("🔄 FALLBACK: Using smart forecast fallback");
+  const fallback = generateSmartFallbackForecast();
+  fallback.source = "smart-fallback";
+  console.log("📊 Fallback forecast:", fallback);
+  return fallback;
+}
+
+/**
+ * Smart fallback forecast
+ */
+function generateSmartFallbackForecast() {
+  return {
+    forecast_date: new Date().toISOString().split("T")[0],
+    demand_forecast: {
+      water_supply: {
+        predicted_requests: 15,
+        change_percent: 12,
+        confidence: 78,
+        trend: "Increasing",
+      },
+      healthcare: {
+        predicted_requests: 11,
+        change_percent: 8,
+        confidence: 72,
+        trend: "Stable",
+      },
+      infrastructure: {
+        predicted_requests: 18,
+        change_percent: 15,
+        confidence: 80,
+        trend: "Increasing",
+      },
+      electricity: {
+        predicted_requests: 9,
+        change_percent: 5,
+        confidence: 75,
+        trend: "Stable",
+      },
+    },
+    bottlenecks: [
+      {
+        department: "Water Department",
+        overload_percent: 65,
+        urgency: "High",
+        recommendation: "Add 10 staff members",
+      },
+    ],
+    resource_allocation: {
+      additional_staff_needed: 25,
+      budget_required_lakhs: 15,
+      priority_areas: ["Water Supply", "Infrastructure"],
+    },
+    risk_zones: [
+      {
+        location: "Mumbai",
+        risk_type: "Service Overload",
+        severity: 8,
+        action_needed: "Deploy 5 mobile units",
+      },
+    ],
+    insights:
+      "Expecting 15% increase in requests. Department reinforcement recommended.",
+  };
+}
+
+console.log("✅ Hybrid Gemini API system loaded!");
+console.log("📍 API Endpoint:", getApiEndpoint());
 
 console.log("✅ All functions loaded successfully!");
