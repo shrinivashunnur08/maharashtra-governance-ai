@@ -3842,6 +3842,398 @@ function loadRecentAlerts() {
   console.log("✅ Alert section should now be VISIBLE");
 }
 
+// ============================================
+// MITRA AI CHATBOT SYSTEM
+// ============================================
+
+// ============================================
+// MITRA AI CHATBOT SYSTEM
+// ============================================
+
+let chatLanguage = "en"; // Default language
+let isChatbotOpen = false;
+let chatVoiceRecognition = null;
+let isChatListening = false;
+
+function toggleChatbot() {
+  const chatWindow = document.getElementById("chatbot-window");
+  const chatBadge = document.getElementById("chat-badge");
+
+  isChatbotOpen = !isChatbotOpen;
+
+  if (isChatbotOpen) {
+    chatWindow.style.display = "flex";
+    chatBadge.style.display = "none";
+
+    // Focus input
+    setTimeout(() => {
+      document.getElementById("chatbot-input").focus();
+    }, 300);
+  } else {
+    chatWindow.style.display = "none";
+  }
+}
+
+function switchChatLanguage(lang) {
+  chatLanguage = lang;
+
+  // Update active button
+  document.querySelectorAll(".lang-btn").forEach((btn) => {
+    btn.classList.remove("active");
+    if (btn.dataset.lang === lang) {
+      btn.classList.add("active");
+    }
+  });
+
+  // Update placeholder
+  const input = document.getElementById("chatbot-input");
+  const placeholders = {
+    en: "Type your message or speak...",
+    mr: "तुमचा संदेश टाइप करा किंवा बोला...",
+    hi: "अपना संदेश टाइप करें या बोलें...",
+  };
+  input.placeholder = placeholders[lang];
+
+  // Send language change confirmation
+  const messages = {
+    en: "Language changed to English. How can I help you?",
+    mr: "भाषा मराठीमध्ये बदलली. मी तुम्हाला कशी मदत करू शकतो?",
+    hi: "भाषा हिंदी में बदल दी गई। मैं आपकी कैसे मदद कर सकता हूँ?",
+  };
+
+  addBotMessage(messages[lang]);
+}
+
+function sendQuickMessage(message) {
+  addUserMessage(message);
+  processUserMessage(message);
+}
+
+function handleChatKeyPress(event) {
+  if (event.key === "Enter") {
+    sendChatMessage();
+  }
+}
+
+function sendChatMessage() {
+  const input = document.getElementById("chatbot-input");
+  const message = input.value.trim();
+
+  if (!message) return;
+
+  addUserMessage(message);
+  input.value = "";
+
+  processUserMessage(message);
+}
+
+function addUserMessage(message) {
+  const messagesContainer = document.getElementById("chatbot-messages");
+
+  const messageDiv = document.createElement("div");
+  messageDiv.className = "chat-message user-message";
+  messageDiv.innerHTML = `
+    <div class="message-avatar">👤</div>
+    <div class="message-content">
+      <p>${escapeHtml(message)}</p>
+    </div>
+  `;
+
+  messagesContainer.appendChild(messageDiv);
+
+  // Smooth scroll to bottom
+  setTimeout(() => {
+    messagesContainer.scrollTo({
+      top: messagesContainer.scrollHeight,
+      behavior: "smooth",
+    });
+  }, 100);
+}
+
+function addBotMessage(message) {
+  const messagesContainer = document.getElementById("chatbot-messages");
+
+  const messageDiv = document.createElement("div");
+  messageDiv.className = "chat-message bot-message";
+  messageDiv.innerHTML = `
+    <div class="message-avatar">🤖</div>
+    <div class="message-content">
+      <p>${message}</p>
+    </div>
+  `;
+
+  messagesContainer.appendChild(messageDiv);
+
+  // Smooth scroll to bottom
+  setTimeout(() => {
+    messagesContainer.scrollTo({
+      top: messagesContainer.scrollHeight,
+      behavior: "smooth",
+    });
+  }, 100);
+}
+
+function showTypingIndicator() {
+  const messagesContainer = document.getElementById("chatbot-messages");
+
+  const typingDiv = document.createElement("div");
+  typingDiv.className = "chat-message bot-message";
+  typingDiv.id = "typing-indicator";
+  typingDiv.innerHTML = `
+    <div class="message-avatar">🤖</div>
+    <div class="message-content">
+      <div class="typing-indicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>
+  `;
+
+  messagesContainer.appendChild(typingDiv);
+
+  // Smooth scroll to bottom
+  setTimeout(() => {
+    messagesContainer.scrollTo({
+      top: messagesContainer.scrollHeight,
+      behavior: "smooth",
+    });
+  }, 100);
+}
+
+function removeTypingIndicator() {
+  const typingIndicator = document.getElementById("typing-indicator");
+  if (typingIndicator) {
+    typingIndicator.remove();
+  }
+}
+
+async function processUserMessage(message) {
+  showTypingIndicator();
+
+  // Check for quick responses first
+  const quickResponse = getQuickResponse(message);
+
+  if (quickResponse) {
+    // Simulate delay for natural conversation
+    await sleep(800);
+    removeTypingIndicator();
+    addBotMessage(quickResponse);
+    return;
+  }
+
+  // Call Gemini AI for complex queries
+  try {
+    const aiResponse = await getMitraAIResponse(message);
+    await sleep(1000); // Simulate processing
+    removeTypingIndicator();
+    addBotMessage(aiResponse);
+  } catch (error) {
+    console.error("MITRA AI error:", error);
+    removeTypingIndicator();
+    addBotMessage(getFallbackResponse());
+  }
+}
+
+function getQuickResponse(message) {
+  const lowerMessage = message.toLowerCase();
+
+  // Multilingual quick responses
+  const quickResponses = {
+    en: {
+      hello:
+        "Hello! 👋 I'm MITRA, your AI assistant for Maharashtra Government services. I can help you with:\n\n• Filing complaints\n• Tracking requests\n• Emergency contacts\n• Service information\n\nHow can I assist you today?",
+      hi: "Hello! 👋 I'm MITRA, your AI assistant for Maharashtra Government services. I can help you with:\n\n• Filing complaints\n• Tracking requests\n• Emergency contacts\n• Service information\n\nHow can I assist you today?",
+      complaint:
+        '📝 To file a complaint:\n\n1. Go to "Citizen Portal" section\n2. Click "Submit New Request"\n3. Fill in your details (Name, Phone, Location)\n4. Select complaint type\n5. Add description and photo evidence\n6. Submit and receive your tracking Request ID\n\n💡 Tip: Mark as CRITICAL for urgent issues!',
+      file: '📝 To file a complaint:\n\n1. Go to "Citizen Portal" section\n2. Click "Submit New Request"\n3. Fill in your details (Name, Phone, Location)\n4. Select complaint type\n5. Add description and photo evidence\n6. Submit and receive your tracking Request ID\n\n💡 Tip: Mark as CRITICAL for urgent issues!',
+      track:
+        '🔍 To track your request:\n\n1. Go to "Citizen Portal"\n2. Click "Track Request" tab\n3. Enter your Request ID (e.g., REQ-001)\n4. View real-time status\n\nRequest Status Guide:\n• 🟡 Pending: Under review\n• 🔵 In Progress: Being resolved\n• 🟢 Resolved: Completed',
+      emergency:
+        "🚨 EMERGENCY CONTACTS:\n\n🔥 Fire Brigade: 101\n👮 Police: 100\n🚑 Ambulance: 102\n👩 Women Helpline: 1091\n🚸 Child Helpline: 1098\n🚗 Traffic Police: 103\n\n⚡ For immediate emergencies, call directly!\nFor non-urgent issues, file a CRITICAL complaint.",
+      contact:
+        "📞 CONTACT INFORMATION:\n\n✉️ Email: support@maharashtra.gov.in\n📱 Phone: 1800-123-4567\n⏰ Office Hours: Mon-Fri, 9 AM - 6 PM\n🏢 Address: Maharashtra Bhavan, Mumbai\n\n💬 You can also chat with me 24/7 for instant help!",
+      thank:
+        "You're very welcome! 😊 I'm here 24/7 whenever you need assistance. Feel free to ask me anything about Maharashtra Government services!",
+      help: "🤖 I'm MITRA, your AI assistant! I can help with:\n\n1. 📝 Filing complaints\n2. 🔍 Tracking requests\n3. 🚨 Emergency contacts\n4. ℹ️ Service information\n5. 💬 General queries\n\nJust type your question or use the quick action buttons below!",
+      services:
+        "🏛️ AVAILABLE SERVICES:\n\n• Infrastructure Issues\n• Water Supply Problems\n• Road Maintenance\n• Waste Management\n• Street Lighting\n• Public Safety\n• Health Services\n• Education\n\nSelect any service in the complaint form!",
+      status:
+        'To check your complaint status, please provide your Request ID (e.g., REQ-001) or click the "Track Request" button below! 🔍',
+    },
+    mr: {
+      नमस्कार:
+        "नमस्कार! 👋 मी MITRA आहे, महाराष्ट्र शासनाच्या सेवांसाठी तुमचा AI सहाय्यक. मी तुम्हाला मदत करू शकतो:\n\n• तक्रारी दाखल करण्यासाठी\n• विनंत्या ट्रॅक करण्यासाठी\n• आपत्कालीन संपर्क\n• सेवा माहिती\n\nआज मी तुम्हाला कशी मदत करू शकतो?",
+      तक्रार:
+        '📝 तक्रार दाखल करण्यासाठी:\n\n1. "नागरिक पोर्टल" विभाग वर जा\n2. "नवीन विनंती सबमिट करा" वर क्लिक करा\n3. तुमचे तपशील भरा\n4. तक्रारीचा प्रकार निवडा\n5. वर्णन आणि फोटो पुरावा जोडा\n6. सबमिट करा आणि ट्रॅकिंग Request ID प्राप्त करा\n\n💡 टीप: तातडीच्या समस्यांसाठी CRITICAL चिन्हांकित करा!',
+      ट्रॅक:
+        '🔍 तुमची विनंती ट्रॅक करण्यासाठी:\n\n1. "नागरिक पोर्टल" वर जा\n2. "विनंती ट्रॅक करा" टॅब वर क्लिक करा\n3. तुमचा Request ID एंटर करा\n4. रिअल-टाइम स्थिती पहा',
+      आपत्कालीन:
+        "🚨 आपत्कालीन संपर्क:\n\n🔥 अग्निशमन दल: 101\n👮 पोलीस: 100\n🚑 रुग्णवाहिका: 102\n👩 महिला हेल्पलाइन: 1091\n🚸 बाल हेल्पलाइन: 1098\n🚗 वाहतूक पोलीस: 103\n\n⚡ तात्काळ आपत्कालीनतेसाठी थेट कॉल करा!",
+      धन्यवाद:
+        "आपलं स्वागत आहे! 😊 मी 24/7 तुमच्या मदतीसाठी उपलब्ध आहे. महाराष्ट्र शासनाच्या सेवांबद्दल काहीही विचारा!",
+    },
+    hi: {
+      नमस्ते:
+        "नमस्ते! 👋 मैं MITRA हूं, महाराष्ट्र सरकार की सेवाओं के लिए आपका AI सहायक। मैं आपकी मदद कर सकता हूं:\n\n• शिकायत दर्ज करने में\n• अनुरोध ट्रैक करने में\n• आपातकालीन संपर्क\n• सेवा जानकारी\n\nआज मैं आपकी कैसे मदद कर सकता हूं?",
+      शिकायत:
+        '📝 शिकायत दर्ज करने के लिए:\n\n1. "नागरिक पोर्टल" सेक्शन पर जाएं\n2. "नई अनुरोध जमा करें" पर क्लिक करें\n3. अपना विवरण भरें\n4. शिकायत का प्रकार चुनें\n5. विवरण और फोटो प्रमाण जोड़ें\n6. सबमिट करें और ट्रैकिंग Request ID प्राप्त करें',
+      आपातकाल:
+        "🚨 आपातकालीन संपर्क:\n\n🔥 फायर ब्रिगेड: 101\n👮 पुलिस: 100\n🚑 एम्बुलेंस: 102\n👩 महिला हेल्पलाइन: 1091\n🚸 बाल हेल्पलाइन: 1098",
+      धन्यवाद:
+        "आपका स्वागत है! 😊 मैं 24/7 आपकी मदद के लिए उपलब्ध हूं। महाराष्ट्र सरकार की सेवाओं के बारे में कुछ भी पूछें!",
+    },
+  };
+
+  const responses = quickResponses[chatLanguage] || quickResponses["en"];
+
+  for (const [key, response] of Object.entries(responses)) {
+    if (lowerMessage.includes(key)) {
+      return response;
+    }
+  }
+
+  return null;
+}
+
+async function getMitraAIResponse(userMessage) {
+  const languageNames = {
+    en: "English",
+    mr: "Marathi",
+    hi: "Hindi",
+  };
+
+  const prompt = `You are MITRA, an AI assistant for Maharashtra Government's citizen service platform.
+
+Language: Respond in ${languageNames[chatLanguage]}
+
+User's question: "${userMessage}"
+
+Provide a helpful, concise response (max 3-4 sentences) about:
+- Filing complaints
+- Tracking requests
+- Government services
+- Emergency contacts
+- Using the platform
+
+Be friendly, professional, and supportive. If the query is in ${languageNames[chatLanguage]}, respond in the same language.`;
+
+  try {
+    // Replace with your actual Gemini API call
+    const response = await callGeminiAPISecure(prompt, 10000);
+
+    if (response.success && response.text) {
+      return response.text;
+    } else {
+      return getFallbackResponse();
+    }
+  } catch (error) {
+    console.error("Gemini API error in chat:", error);
+    return getFallbackResponse();
+  }
+}
+
+function getFallbackResponse() {
+  const fallbacks = {
+    en: "I apologize, but I'm having trouble processing that right now. Please try:\n\n• Asking a simpler question\n• Using the quick action buttons\n• Contacting support at 1800-123-4567",
+    mr: "मला माफ करा, परंतु मला सध्या ते प्रोसेस करण्यात अडचण येत आहे. कृपया प्रयत्न करा:\n\n• सोपा प्रश्न विचारा\n• क्विक ॲक्शन बटन वापरा\n• 1800-123-4567 वर संपर्क साधा",
+    hi: "मुझे खेद है, लेकिन मुझे इसे प्रोसेस करने में परेशानी हो रही है। कृपया प्रयास करें:\n\n• सरल प्रश्न पूछें\n• त्वरित कार्रवाई बटन का उपयोग करें\n• 1800-123-4567 पर संपर्क करें",
+  };
+
+  return fallbacks[chatLanguage] || fallbacks["en"];
+}
+
+// Voice input for chat
+function startVoiceChat() {
+  const voiceBtn = document.querySelector(".voice-chat-btn");
+
+  if (isChatListening) {
+    stopChatListening();
+    return;
+  }
+
+  if (
+    !("webkitSpeechRecognition" in window) &&
+    !("SpeechRecognition" in window)
+  ) {
+    alert("Voice input not supported in this browser");
+    return;
+  }
+
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+  chatVoiceRecognition = new SpeechRecognition();
+
+  const langCodes = {
+    en: "en-IN",
+    mr: "mr-IN",
+    hi: "hi-IN",
+  };
+
+  chatVoiceRecognition.lang = langCodes[chatLanguage];
+  chatVoiceRecognition.continuous = false;
+  chatVoiceRecognition.interimResults = false;
+
+  voiceBtn.classList.add("listening");
+  isChatListening = true;
+
+  chatVoiceRecognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    document.getElementById("chatbot-input").value = transcript;
+    stopChatListening();
+  };
+
+  chatVoiceRecognition.onerror = () => {
+    stopChatListening();
+  };
+
+  chatVoiceRecognition.onend = () => {
+    stopChatListening();
+  };
+
+  try {
+    chatVoiceRecognition.start();
+  } catch (error) {
+    console.error("Voice recognition error:", error);
+    stopChatListening();
+  }
+}
+
+function stopChatListening() {
+  const voiceBtn = document.querySelector(".voice-chat-btn");
+  voiceBtn.classList.remove("listening");
+  isChatListening = false;
+
+  if (chatVoiceRecognition) {
+    try {
+      chatVoiceRecognition.stop();
+    } catch (error) {
+      console.error("Error stopping chat voice recognition:", error);
+    }
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Initialize chatbot badge notification
+setTimeout(() => {
+  const badge = document.getElementById("chat-badge");
+  if (badge) {
+    badge.textContent = "1";
+    badge.style.display = "flex";
+  }
+}, 2000);
+
+console.log("✅ MITRA AI Chatbot loaded successfully!");
+
 console.log("✅ Hybrid Gemini API system loaded!");
 console.log("📍 API Endpoint:", getApiEndpoint());
 
