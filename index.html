@@ -43,7 +43,20 @@
 
     <!-- Right Side - Authentication -->
     <div class="login-forms">
-      
+       <!-- Add this at the very top -->
+  <div id="existing-session-notice" style="display: none; background: #eff6ff; padding: 15px; border-radius: 10px; border-left: 4px solid #3b82f6; margin-bottom: 20px;">
+    <p style="margin: 0 0 10px 0; color: #1e40af; font-weight: 600;">
+      You're already logged in as <strong id="session-user-name"></strong>
+    </p>
+    <div style="display: flex; gap: 10px;">
+      <button onclick="continueSession()" style="flex: 1; padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+        Continue
+      </button>
+      <button onclick="clearSessionAndReload()" style="flex: 1; padding: 10px; background: white; color: #3b82f6; border: 2px solid #3b82f6; border-radius: 8px; cursor: pointer; font-weight: 600;">
+        Use Different Account
+      </button>
+    </div>
+  </div>
       <!-- Role Selection -->
       <div class="role-selection-header">
         <h3>Welcome Back</h3>
