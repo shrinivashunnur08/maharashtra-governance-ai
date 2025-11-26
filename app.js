@@ -21,57 +21,46 @@ const VALID_ADMIN_CODES = ["GOV2024", "MAHA2024", "ADMIN123"];
 function switchRole() {
   const role = document.querySelector('input[name="user-role"]:checked').value;
 
-  // Clear all error messages
   clearAllErrors();
 
-  // Get all form elements
   const citizenLogin = document.getElementById("citizen-login");
   const citizenSignup = document.getElementById("citizen-signup");
   const officialLogin = document.getElementById("official-login");
 
-  // Reset all forms
   if (citizenLogin) citizenLogin.reset();
   if (citizenSignup) citizenSignup.reset();
   if (officialLogin) officialLogin.reset();
 
-  // Get section containers
   const citizenSection = document.getElementById("citizen-auth-section");
   const officialSection = document.getElementById("official-auth-section");
 
   if (role === "citizen") {
-    // Show citizen section
     citizenSection.style.display = "block";
     citizenSection.style.visibility = "visible";
     citizenSection.style.opacity = "1";
-
-    // Hide official section
     officialSection.style.display = "none";
-
-    // Make sure login is active by default for citizens
     switchCitizenForm("citizen-login");
   } else {
-    // Hide citizen section
     citizenSection.style.display = "none";
-
-    // Show official section with all fields visible
     officialSection.style.display = "block";
     officialSection.style.visibility = "visible";
     officialSection.style.opacity = "1";
 
-    // Make sure all input fields in official form are visible
     const officialInputs = officialSection.querySelectorAll("input");
     officialInputs.forEach((input) => {
       input.style.display = "block";
       input.style.visibility = "visible";
-      input.value = ""; // Clear any pre-filled values
+      input.value = "";
     });
 
-    // Make sure the form itself is visible
     if (officialLogin) {
       officialLogin.style.display = "block";
       officialLogin.classList.add("active");
     }
   }
+
+  // ✅ Initialize password toggles after role switch
+  setTimeout(() => initializePasswordToggles(), 100);
 }
 
 // Force visibility check after a short delay
@@ -140,26 +129,37 @@ function handleCitizenLogin(event) {
   const email = document.getElementById("citizen-login-email").value.trim();
   const password = document.getElementById("citizen-login-password").value;
   const errorEl = document.getElementById("citizen-login-error");
-  errorEl.textContent = "";
-  errorEl.classList.remove("show");
 
   errorEl.textContent = "";
   errorEl.classList.remove("show");
+  errorEl.style.display = "none";
 
   if (!email || !password) {
     showError(errorEl, "❌ Please enter email and password");
     return;
   }
 
+  // ✅ Email validation
+  if (!email.includes("@") || !email.includes(".")) {
+    showError(errorEl, "❌ Please enter a valid email address");
+    return;
+  }
+
   try {
     const users = JSON.parse(localStorage.getItem("maha_users") || "[]");
+    console.log("📋 All users:", users);
+    console.log("🔍 Looking for:", email);
+
     const user = users.find(
       (u) =>
-        u.email === email && u.password === password && u.role === "citizen"
+        u.email.toLowerCase() === email.toLowerCase() &&
+        u.password === password &&
+        u.role === "citizen"
     );
 
     if (!user) {
       showError(errorEl, "❌ Invalid email or password");
+      console.log("❌ Login failed - user not found or password incorrect");
       return;
     }
 
@@ -172,6 +172,7 @@ function handleCitizenLogin(event) {
     };
 
     localStorage.setItem("maha_session", JSON.stringify(session));
+    console.log("✅ Login successful:", session);
     showMainApp(session);
   } catch (error) {
     showError(errorEl, "❌ Login failed. Please try again.");
@@ -183,34 +184,44 @@ function handleCitizenSignup(event) {
   event.preventDefault();
   const name = document.getElementById("citizen-signup-name").value.trim();
   const phone = document.getElementById("citizen-signup-phone").value.trim();
-  const email = document.getElementById("citizen-signup-email").value.trim();
+  const email = document
+    .getElementById("citizen-signup-email")
+    .value.trim()
+    .toLowerCase();
   const password = document.getElementById("citizen-signup-password").value;
   const confirm = document.getElementById("citizen-signup-confirm").value;
   const errorEl = document.getElementById("citizen-signup-error");
-  errorEl.textContent = "";
-  errorEl.classList.remove("show");
 
   errorEl.textContent = "";
   errorEl.classList.remove("show");
+  errorEl.style.display = "none";
 
+  // Validation
   if (!name || name.length < 2) {
-    showError(errorEl, "❌ Please enter your full name");
+    showError(
+      errorEl,
+      "❌ Please enter your full name (at least 2 characters)"
+    );
     return;
   }
-  if (!email || !email.includes("@")) {
+
+  if (!email || !email.includes("@") || !email.includes(".")) {
     showError(errorEl, "❌ Please enter a valid email address");
     return;
   }
-  if (!phone || phone.length < 10) {
+
+  if (!phone || phone.length !== 10 || !/^\d{10}$/.test(phone)) {
     showError(errorEl, "❌ Please enter a valid 10-digit phone number");
     return;
   }
-  if (password !== confirm) {
-    showError(errorEl, "❌ Passwords do not match");
+
+  if (!password || password.length < 6) {
+    showError(errorEl, "❌ Password must be at least 6 characters");
     return;
   }
-  if (password.length < 6) {
-    showError(errorEl, "❌ Password must be at least 6 characters");
+
+  if (password !== confirm) {
+    showError(errorEl, "❌ Passwords do not match");
     return;
   }
 
@@ -219,7 +230,8 @@ function handleCitizenSignup(event) {
       localStorage.getItem("maha_users") || "[]"
     );
 
-    if (existingUsers.find((u) => u.email === email)) {
+    // Check for existing email (case-insensitive)
+    if (existingUsers.find((u) => u.email.toLowerCase() === email)) {
       showError(errorEl, "❌ Email already registered. Please login instead.");
       return;
     }
@@ -227,7 +239,7 @@ function handleCitizenSignup(event) {
     const newUser = {
       id: Date.now(),
       name,
-      email,
+      email: email, // Store in lowercase
       phone,
       password,
       role: "citizen",
@@ -237,13 +249,29 @@ function handleCitizenSignup(event) {
     existingUsers.push(newUser);
     localStorage.setItem("maha_users", JSON.stringify(existingUsers));
 
-    alert(
-      `✅ Account created for ${name}!\n\nYou can now login with your email and password.`
-    );
+    console.log("✅ User created:", { email, name });
 
-    // Auto-fill login and switch
-    document.getElementById("citizen-login-email").value = email;
-    switchCitizenForm("citizen-login");
+    // Show success message
+    const successDiv = document.createElement("div");
+    successDiv.className = "alert-success";
+    successDiv.style.cssText =
+      "background: #d1fae5; color: #065f46; padding: 20px; border-radius: 12px; border-left: 5px solid #10b981; margin-top: 20px;";
+    successDiv.innerHTML = `
+      <h4 style="margin: 0 0 10px 0;">✅ Account Created Successfully!</h4>
+      <p style="margin: 0;">Welcome, ${name}! You can now login with your credentials.</p>
+    `;
+
+    errorEl.parentElement.insertBefore(successDiv, errorEl);
+
+    // Auto-fill login and switch after 2 seconds
+    setTimeout(() => {
+      document.getElementById("citizen-login-email").value = email;
+      switchCitizenForm("citizen-login");
+      successDiv.remove();
+    }, 2000);
+
+    // Clear form
+    event.target.reset();
   } catch (error) {
     showError(errorEl, "❌ Signup failed. Please try again.");
     console.error("Signup error:", error);
@@ -306,6 +334,70 @@ function showError(element, message) {
   }
 }
 
+function initializePasswordToggles() {
+  const passwordInputs = document.querySelectorAll('input[type="password"]');
+
+  passwordInputs.forEach((input) => {
+    if (input.nextElementSibling?.classList.contains("password-toggle")) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "relative";
+    wrapper.style.display = "flex";
+    wrapper.style.alignItems = "center";
+
+    const toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.className = "password-toggle";
+    toggleBtn.textContent = "Show";
+    toggleBtn.setAttribute("aria-label", "Show password");
+
+    toggleBtn.style.cssText = `
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 6px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #3b82f6;
+      transition: all 0.2s ease;
+      z-index: 10;
+      border-radius: 4px;
+    `;
+
+    toggleBtn.addEventListener("mouseenter", () => {
+      toggleBtn.style.background = "#eff6ff";
+      toggleBtn.style.color = "#1e40af";
+    });
+
+    toggleBtn.addEventListener("mouseleave", () => {
+      toggleBtn.style.background = "transparent";
+      toggleBtn.style.color = "#3b82f6";
+    });
+
+    toggleBtn.addEventListener("click", () => {
+      if (input.type === "password") {
+        input.type = "text";
+        toggleBtn.textContent = "Hide";
+        toggleBtn.setAttribute("aria-label", "Hide password");
+      } else {
+        input.type = "password";
+        toggleBtn.textContent = "Show";
+        toggleBtn.setAttribute("aria-label", "Show password");
+      }
+    });
+
+    input.style.paddingRight = "65px";
+
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+    wrapper.appendChild(toggleBtn);
+  });
+}
+
 function checkExistingSession() {
   const session = JSON.parse(localStorage.getItem("maha_session"));
   if (session) {
@@ -346,6 +438,17 @@ function clearSessionAndReload() {
 
 // Auto-clear errors when user starts typing
 document.addEventListener("DOMContentLoaded", () => {
+  checkExistingSession();
+
+  // ✅ Initialize password toggles on page load
+  initializePasswordToggles();
+
+  // Initialize voice input after a short delay
+  setTimeout(() => {
+    initializeVoiceInput();
+    initializeImageUpload();
+  }, 500);
+
   const forms = ["citizen-login", "citizen-signup", "official-login"];
 
   forms.forEach((formId) => {
@@ -379,13 +482,16 @@ function showMainApp(session) {
 
   setTimeout(() => {
     setupEventListeners();
+    initializeVoiceInput();
+    initializeImageUpload();
     console.log("✅ Event listeners initialized");
   }, 100);
 
+  // ✅ UPDATED: Navigate based on role
   if (session.role === "citizen") {
-    navigateToPage("portal");
+    navigateToPage("portal"); // Citizens go to Portal by default
   } else {
-    navigateToPage("dashboard");
+    navigateToPage("dashboard"); // Officials go to Dashboard
     setTimeout(() => {
       loadDashboardData();
       console.log("✅ Dashboard data loading...");
@@ -421,6 +527,36 @@ function updateUserHeader(session) {
   } else {
     mainApp.insertAdjacentHTML("afterbegin", headerHtml);
   }
+
+  // ✅ NEW: Hide/show navigation based on role
+  updateNavigationForRole(session.role);
+}
+
+function updateNavigationForRole(role) {
+  const dashboardLink = document.querySelector(
+    '.nav-link[data-page="dashboard"]'
+  );
+  const analyticsLink = document.querySelector(
+    '.nav-link[data-page="analytics"]'
+  );
+  const portalLink = document.querySelector('.nav-link[data-page="portal"]');
+  const transparencyLink = document.querySelector(
+    '.nav-link[data-page="transparency"]'
+  );
+
+  if (role === "citizen") {
+    // Citizens: Show only Portal and Transparency
+    if (dashboardLink) dashboardLink.style.display = "none";
+    if (analyticsLink) analyticsLink.style.display = "none";
+    if (portalLink) portalLink.style.display = "inline-block";
+    if (transparencyLink) transparencyLink.style.display = "inline-block";
+  } else {
+    // Officials: Show all 4 pages
+    if (dashboardLink) dashboardLink.style.display = "inline-block";
+    if (analyticsLink) analyticsLink.style.display = "inline-block";
+    if (portalLink) portalLink.style.display = "inline-block";
+    if (transparencyLink) transparencyLink.style.display = "inline-block";
+  }
 }
 
 function handleLogout() {
@@ -429,9 +565,18 @@ function handleLogout() {
     document.body.classList.remove("role-citizen", "role-official");
     document.getElementById("main-app").style.display = "none";
     document.getElementById("login-section").style.display = "flex";
-    document.getElementById("login-form").reset();
-    document.getElementById("signup-form").reset();
+
+    // ✅ SAFELY reset forms (check if they exist first)
+    const citizenLogin = document.getElementById("citizen-login");
+    const citizenSignup = document.getElementById("citizen-signup");
+    const officialLogin = document.getElementById("official-login");
+
+    if (citizenLogin) citizenLogin.reset();
+    if (citizenSignup) citizenSignup.reset();
+    if (officialLogin) officialLogin.reset();
+
     console.log("✅ Logged out successfully");
+
     setTimeout(() => {
       location.reload();
     }, 500);
@@ -551,7 +696,9 @@ function navigateToPage(pageName) {
     } else if (pageName === "analytics") {
       loadAnalyticsData();
     } else if (pageName === "transparency") {
-      loadTransparencyData();
+      setTimeout(() => {
+        loadTransparencyData();
+      }, 100);
     }
   }
 }
@@ -597,9 +744,13 @@ async function loadDashboardData() {
     updateCriticalAlerts(requests);
     updateCharts(requests);
     updateRequestsTable(requests);
+
+    loadRecentAlerts();
   } catch (error) {
     console.error("Error loading dashboard:", error);
     showSampleData();
+    // Load recent alerts
+    loadRecentAlerts();
   }
 }
 
@@ -831,6 +982,7 @@ async function updateRequestStatus(selectElement) {
     }
 
     console.log("✅ Update successful! New status:", data[0].status);
+    await sendWhatsAppStatusUpdate(requestId, newStatus);
 
     selectElement.dataset.originalValue = newStatus;
     showStatusUpdateSuccess(requestId, newStatus);
@@ -1523,6 +1675,8 @@ async function handleComplaintSubmission(e) {
       affected_count: parseInt(data.affected_count),
       department: deptMapping[data.complaint_type],
       date_submitted: new Date().toISOString(),
+      has_image: uploadedImageBase64 ? true : false,
+      image_url: uploadedImageBase64 || null, // Store base64 image
     };
 
     const { error } = await supabaseClient
@@ -1530,6 +1684,9 @@ async function handleComplaintSubmission(e) {
       .insert([requestData]);
 
     if (error) throw error;
+
+    // ✅ Send alerts for critical/high severity complaints
+    await sendOfficialAlerts(requestData);
 
     // Show success message
     resultDiv.innerHTML = `
@@ -1544,6 +1701,11 @@ async function handleComplaintSubmission(e) {
     `;
 
     e.target.reset();
+
+    // Clear uploaded image after successful submission
+    if (uploadedImageFile) {
+      removeImage();
+    }
 
     // Auto-hide success message after 7 seconds
     setTimeout(() => {
@@ -1738,6 +1900,11 @@ function showTrackingResult(request) {
 
 async function loadTransparencyData() {
   try {
+    // Initialize heatmap with proper delay
+    setTimeout(() => {
+      initializeHeatmap();
+    }, 200);
+
     const { data: requests, error } = await supabaseClient
       .from("citizen_requests")
       .select("*");
@@ -1755,6 +1922,512 @@ async function loadTransparencyData() {
     console.error("Error loading transparency data:", error);
   }
 }
+
+// ============================================
+// HEATMAP FUNCTIONALITY
+// ============================================
+
+let heatmapInstance = null;
+let heatmapMarkers = [];
+let currentFilter = "all";
+
+// City coordinates for Maharashtra
+const cityCoordinates = {
+  Mumbai: [19.076, 72.8777],
+  Pune: [18.5204, 73.8567],
+  Nagpur: [21.1458, 79.0882],
+  Nashik: [19.9975, 73.7898],
+  Aurangabad: [19.8762, 75.3433],
+  Thane: [19.2183, 72.9781],
+  Solapur: [17.6599, 75.9064],
+  Kolhapur: [16.705, 74.2433],
+};
+
+async function initializeHeatmap() {
+  console.log("🗺️ Initializing heatmap...");
+
+  const mapContainer = document.getElementById("complaint-heatmap");
+  if (!mapContainer) {
+    console.error("❌ Heatmap container not found");
+    return;
+  }
+
+  // Clear any existing content
+  mapContainer.innerHTML = "";
+
+  try {
+    // Initialize Leaflet map centered on Maharashtra
+    heatmapInstance = L.map("complaint-heatmap", {
+      center: [19.7515, 75.7139],
+      zoom: 7,
+      zoomControl: true,
+      scrollWheelZoom: true,
+    });
+
+    // Add OpenStreetMap tiles
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap contributors",
+      maxZoom: 18,
+    }).addTo(heatmapInstance);
+
+    // Force Leaflet to recalculate size
+    setTimeout(() => {
+      heatmapInstance.invalidateSize();
+    }, 100);
+
+    console.log("✅ Map instance created, loading data...");
+
+    // Load heatmap data (without await to prevent blocking)
+    loadHeatmapData()
+      .then(() => {
+        console.log("✅ Heatmap data loaded");
+      })
+      .catch((err) => {
+        console.error("❌ Error loading heatmap data:", err);
+        displayDemoHeatmap();
+      });
+  } catch (error) {
+    console.error("❌ Heatmap initialization error:", error);
+    mapContainer.innerHTML = `
+      <div style="padding: 40px; text-align: center; color: #dc2626;">
+        <p>⚠️ Failed to load heatmap. Please refresh the page.</p>
+        <p style="font-size: 12px; color: #64748b;">${error.message}</p>
+      </div>
+    `;
+  }
+}
+
+async function loadHeatmapData(filter = "all") {
+  try {
+    console.log("📊 Loading heatmap data with filter:", filter);
+
+    // Clear existing markers
+    heatmapMarkers.forEach((marker) => {
+      try {
+        heatmapInstance.removeLayer(marker);
+      } catch (e) {
+        console.warn("Could not remove marker:", e);
+      }
+    });
+    heatmapMarkers = [];
+
+    // Try to fetch real data
+    const { data: requests, error } = await supabaseClient
+      .from("citizen_requests")
+      .select("*");
+
+    let dataToShow = [];
+
+    if (!error && requests && requests.length > 0) {
+      console.log(`✅ Found ${requests.length} real complaints`);
+
+      // Filter data based on current filter
+      if (filter === "critical") {
+        dataToShow = requests.filter((r) => r.severity === "Critical");
+      } else if (filter === "all") {
+        dataToShow = requests;
+      } else {
+        // Filter by complaint type (exact match)
+        dataToShow = requests.filter((r) => r.complaint_type === filter);
+      }
+
+      console.log(
+        `✅ Filtered to ${dataToShow.length} complaints for: ${filter}`
+      );
+      renderHeatmapPoints(dataToShow);
+    } else {
+      console.log("📊 No real data, showing demo heatmap");
+      displayDemoHeatmap();
+    }
+  } catch (error) {
+    console.error("❌ Error loading heatmap data:", error);
+    displayDemoHeatmap();
+  }
+}
+
+function renderHeatmapPoints(requests) {
+  const heatmapPoints = [];
+  const cityGroups = {};
+
+  requests.forEach((req) => {
+    const coords = cityCoordinates[req.city];
+    if (coords) {
+      // Add random offset for visual distribution
+      const latOffset = (Math.random() - 0.5) * 0.2;
+      const lngOffset = (Math.random() - 0.5) * 0.2;
+
+      const lat = coords[0] + latOffset;
+      const lng = coords[1] + lngOffset;
+
+      // Weight by severity
+      let intensity = 0.5;
+      if (req.severity === "Critical") intensity = 1.0;
+      else if (req.severity === "High") intensity = 0.8;
+      else if (req.severity === "Medium") intensity = 0.5;
+      else intensity = 0.3;
+
+      heatmapPoints.push([lat, lng, intensity]);
+
+      // Group by city
+      if (!cityGroups[req.city]) {
+        cityGroups[req.city] = {
+          coords: coords,
+          count: 0,
+          critical: 0,
+          types: {},
+        };
+      }
+      cityGroups[req.city].count++;
+      if (req.severity === "Critical") cityGroups[req.city].critical++;
+      cityGroups[req.city].types[req.complaint_type] =
+        (cityGroups[req.city].types[req.complaint_type] || 0) + 1;
+    }
+  });
+
+  // Add heatmap layer
+  if (heatmapPoints.length > 0 && window.L && window.L.heatLayer) {
+    const heat = L.heatLayer(heatmapPoints, {
+      radius: 25,
+      blur: 35,
+      maxZoom: 10,
+      max: 1.0,
+      gradient: {
+        0.0: "#00ff00",
+        0.4: "#ffff00",
+        0.6: "#ff9900",
+        0.8: "#ff0000",
+        1.0: "#990000",
+      },
+    }).addTo(heatmapInstance);
+  }
+
+  // Add city markers
+  Object.entries(cityGroups).forEach(([city, data]) => {
+    const marker = L.circleMarker(data.coords, {
+      radius: Math.sqrt(data.count) * 3,
+      fillColor: data.critical > 0 ? "#ef4444" : "#3b82f6",
+      color: "#fff",
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.8,
+    }).addTo(heatmapInstance);
+
+    const topTypes = Object.entries(data.types)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([type, count]) => `<li>${type}: ${count}</li>`)
+      .join("");
+
+    marker.bindPopup(`
+      <div style="font-family: Arial; min-width: 200px;">
+        <h4 style="margin: 0 0 10px 0; color: #1e40af; font-size: 16px;">${city}</h4>
+        <p style="margin: 5px 0;"><strong>Total:</strong> ${data.count}</p>
+        <p style="margin: 5px 0; color: #dc2626;"><strong>Critical:</strong> ${data.critical}</p>
+        <p style="margin: 10px 0 5px 0; font-weight: 600;">Top Issues:</p>
+        <ul style="margin: 0; padding-left: 20px;">${topTypes}</ul>
+      </div>
+    `);
+
+    heatmapMarkers.push(marker);
+  });
+
+  console.log(`✅ Rendered ${heatmapPoints.length} points on heatmap`);
+}
+
+function displayDemoHeatmap() {
+  console.log("📊 Displaying demo heatmap data");
+
+  // Demo data for visualization
+  const demoPoints = [
+    [19.076, 72.8777, 0.9], // Mumbai - High
+    [18.5204, 73.8567, 0.7], // Pune - Medium-High
+    [21.1458, 79.0882, 0.5], // Nagpur - Medium
+    [19.9975, 73.7898, 0.6], // Nashik
+    [19.8762, 75.3433, 0.4], // Aurangabad
+  ];
+
+  const heat = L.heatLayer(demoPoints, {
+    radius: 30,
+    blur: 40,
+    maxZoom: 10,
+    gradient: {
+      0.0: "#00ff00",
+      0.5: "#ffff00",
+      1.0: "#ff0000",
+    },
+  }).addTo(heatmapInstance);
+
+  // Add demo markers
+  Object.entries(cityCoordinates).forEach(([city, coords]) => {
+    const marker = L.circleMarker(coords, {
+      radius: 10,
+      fillColor: "#3b82f6",
+      color: "#fff",
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.7,
+    }).addTo(heatmapInstance);
+
+    marker.bindPopup(`
+      <div style="font-family: Arial;">
+        <h4 style="margin: 0 0 8px 0; color: #1e40af;">${city}</h4>
+        <p style="margin: 0;">Sample data - Submit complaints to see real heatmap</p>
+      </div>
+    `);
+
+    heatmapMarkers.push(marker);
+  });
+}
+
+function filterHeatmap(filter) {
+  currentFilter = filter;
+
+  // Update button states
+  document.querySelectorAll(".map-filter-btn").forEach((btn) => {
+    btn.classList.remove("active");
+    if (btn.dataset.filter === filter) {
+      btn.classList.add("active");
+    }
+  });
+
+  // Reload heatmap with filter
+  loadHeatmapData(filter);
+
+  console.log(`🔍 Heatmap filtered: ${filter}`);
+}
+
+// ============================================
+// WHATSAPP INTEGRATION
+// ============================================
+
+function shareToWhatsApp() {
+  // Get form data
+  const form = document.getElementById("complaint-form");
+  const formData = new FormData(form);
+
+  // Validate required fields
+  const name = formData.get("name")?.trim();
+  const city = formData.get("city");
+  const complaintType = formData.get("complaint_type");
+  const description = formData.get("description")?.trim();
+  const severity = formData.get("severity");
+
+  if (!name || !city || !complaintType || !description) {
+    alert("⚠️ Please fill all required fields before sharing to WhatsApp");
+    return;
+  }
+
+  // Create WhatsApp message
+  const message = ` *Maharashtra Governance Platform - New Complaint*
+
+ *Name:* ${name}
+ *Location:* ${city}, ${formData.get("ward") || "N/A"}
+ *Type:* ${complaintType}
+ *Severity:* ${severity}
+ *Citizens Affected:* ${formData.get("affected_count") || "N/A"}
+
+ *Description:*
+${description}
+
+---
+_Submitted via Maharashtra AI Governance Platform_y
+ Track your complaint: https://maharashtra-governance-ai.vercel.app/`;
+
+  // Encode message for URL
+  const encodedMessage = encodeURIComponent(message);
+
+  // Create WhatsApp URL (works on both mobile and desktop)
+  const whatsappURL = `https://wa.me/?text=${encodedMessage}`;
+
+  // Open WhatsApp in new window
+  window.open(whatsappURL, "_blank");
+
+  // Show success notification
+  showWhatsAppNotification(
+    "✅ Opening WhatsApp",
+    "Your complaint details are ready to share!"
+  );
+
+  console.log("📱 WhatsApp share initiated");
+}
+
+function subscribeWhatsAppUpdates() {
+  const requestId = document.getElementById("track-request-id")?.value.trim();
+
+  if (!requestId) {
+    alert("⚠️ Please enter a Request ID first to subscribe for updates");
+    return;
+  }
+
+  // Get user's WhatsApp number
+  const phone = prompt(
+    "📱 Enter your WhatsApp number (with country code):\nExample: +919876543210"
+  );
+
+  if (!phone) {
+    return;
+  }
+
+  // Validate phone number format
+  if (!/^\+?\d{10,15}$/.test(phone.replace(/\s/g, ""))) {
+    alert(
+      "❌ Invalid phone number. Please enter a valid WhatsApp number with country code."
+    );
+    return;
+  }
+
+  // Create subscription message
+  const message = `🔔 *WhatsApp Update Subscription*
+
+I would like to receive status updates for:
+
+📋 *Request ID:* ${requestId}
+📱 *WhatsApp Number:* ${phone}
+
+Please send me notifications when the status changes.
+
+---
+_Maharashtra AI Governance Platform_`;
+
+  const encodedMessage = encodeURIComponent(message);
+
+  // Open WhatsApp chat with official number
+  const officialWhatsApp = "+919876543210"; // Replace with actual official WhatsApp
+  const whatsappURL = `https://wa.me/${officialWhatsApp}?text=${encodedMessage}`;
+
+  window.open(whatsappURL, "_blank");
+
+  // Store subscription locally
+  saveWhatsAppSubscription(requestId, phone);
+
+  showWhatsAppNotification(
+    "✅ Subscription Request Sent",
+    `You'll receive updates for ${requestId} on WhatsApp`
+  );
+
+  console.log(`📱 WhatsApp subscription: ${requestId} -> ${phone}`);
+}
+
+function saveWhatsAppSubscription(requestId, phone) {
+  try {
+    const subscriptions = JSON.parse(
+      localStorage.getItem("whatsapp_subscriptions") || "[]"
+    );
+
+    // Check if already subscribed
+    const existing = subscriptions.find(
+      (s) => s.requestId === requestId && s.phone === phone
+    );
+
+    if (!existing) {
+      subscriptions.push({
+        requestId: requestId,
+        phone: phone,
+        subscribedAt: new Date().toISOString(),
+      });
+
+      localStorage.setItem(
+        "whatsapp_subscriptions",
+        JSON.stringify(subscriptions)
+      );
+      console.log("✅ WhatsApp subscription saved locally");
+    }
+  } catch (error) {
+    console.error("❌ Error saving WhatsApp subscription:", error);
+  }
+}
+
+function showWhatsAppNotification(title, message) {
+  const notification = document.createElement("div");
+  notification.className = "whatsapp-popup";
+
+  notification.innerHTML = `
+    <div class="whatsapp-popup-header">
+      <svg viewBox="0 0 24 24" fill="white">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+      </svg>
+      <h4>${title}</h4>
+    </div>
+    <p>${message}</p>
+  `;
+
+  document.body.appendChild(notification);
+
+  // Auto-remove after 4 seconds
+  setTimeout(() => {
+    notification.style.animation = "fadeOut 0.4s ease-out";
+    setTimeout(() => notification.remove(), 400);
+  }, 4000);
+}
+
+// Auto-send WhatsApp update when status changes (for officials)
+async function sendWhatsAppStatusUpdate(requestId, newStatus) {
+  try {
+    // Check if there are WhatsApp subscriptions for this request
+    const subscriptions = JSON.parse(
+      localStorage.getItem("whatsapp_subscriptions") || "[]"
+    );
+    const subscribers = subscriptions.filter((s) => s.requestId === requestId);
+
+    if (subscribers.length === 0) {
+      console.log("ℹ️ No WhatsApp subscribers for", requestId);
+      return;
+    }
+
+    // Get request details
+    const { data: request, error } = await supabaseClient
+      .from("citizen_requests")
+      .select("*")
+      .eq("request_id", requestId)
+      .single();
+
+    if (error || !request) {
+      console.error("❌ Could not fetch request details");
+      return;
+    }
+
+    // Create update message
+    const statusEmoji = {
+      Open: "🟡",
+      "In Progress": "🔵",
+      Resolved: "🟢",
+    };
+
+    const message = `${statusEmoji[newStatus]} *Status Update*
+
+📋 *Request ID:* ${requestId}
+🔄 *New Status:* ${newStatus}
+📍 *Location:* ${request.city}
+📝 *Type:* ${request.complaint_type}
+
+${
+  newStatus === "Resolved"
+    ? "✅ Your complaint has been resolved! Thank you for your patience."
+    : "⏳ Your complaint is being processed. We'll update you on progress."
+}
+
+---
+_Maharashtra AI Governance Platform_`;
+
+    const encodedMessage = encodeURIComponent(message);
+
+    // For demo: Show notification (in production, use WhatsApp Business API)
+    showWhatsAppNotification(
+      `📱 ${subscribers.length} WhatsApp Update${
+        subscribers.length > 1 ? "s" : ""
+      } Sent`,
+      `Status update sent for ${requestId}`
+    );
+
+    console.log(
+      `✅ WhatsApp updates sent to ${subscribers.length} subscriber(s)`
+    );
+  } catch (error) {
+    console.error("❌ Error sending WhatsApp update:", error);
+  }
+}
+
+console.log("✅ WhatsApp integration loaded");
 
 async function downloadStats() {
   try {
@@ -2131,6 +2804,1042 @@ function generateSmartFallbackForecast() {
     insights:
       "Expecting 15% increase in requests. Department reinforcement recommended.",
   };
+}
+
+// ============================================
+// VOICE INPUT FEATURE
+// ============================================
+
+let voiceRecognition = null;
+let isListening = false;
+
+function initializeVoiceInput() {
+  const voiceBtn = document.getElementById("voice-input-btn");
+  const descriptionField = document.getElementById("complaint-description");
+  const statusDiv = document.getElementById("voice-status");
+
+  if (!voiceBtn) return;
+
+  // Check browser support
+  if (
+    !("webkitSpeechRecognition" in window) &&
+    !("SpeechRecognition" in window)
+  ) {
+    voiceBtn.style.display = "none";
+    statusDiv.innerHTML =
+      '<span style="color: #f59e0b;">⚠️ Voice input not supported in this browser</span>';
+    return;
+  }
+
+  // Initialize speech recognition
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+  voiceRecognition = new SpeechRecognition();
+
+  // Configure recognition
+  voiceRecognition.continuous = false;
+  voiceRecognition.interimResults = false;
+  voiceRecognition.maxAlternatives = 1;
+
+  // Language selector
+  const languageMap = {
+    marathi: "mr-IN",
+    english: "en-IN",
+    hindi: "hi-IN",
+  };
+
+  voiceRecognition.lang = "mr-IN"; // Default Marathi
+
+  // Button click handler
+  voiceBtn.addEventListener("click", () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  });
+
+  function startListening() {
+    isListening = true;
+    voiceBtn.classList.add("listening");
+    statusDiv.innerHTML =
+      '🎤 <span style="color: #ef4444; font-weight: 600;">Listening... Speak now in Marathi or English</span>';
+
+    try {
+      voiceRecognition.start();
+    } catch (error) {
+      console.error("Voice recognition error:", error);
+      stopListening();
+      statusDiv.innerHTML =
+        '<span style="color: #ef4444;">❌ Error starting voice input</span>';
+    }
+  }
+
+  function stopListening() {
+    isListening = false;
+    voiceBtn.classList.remove("listening");
+    statusDiv.innerHTML = "";
+    try {
+      voiceRecognition.stop();
+    } catch (error) {
+      console.error("Error stopping recognition:", error);
+    }
+  }
+
+  // Handle results
+  voiceRecognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    const confidence = event.results[0][0].confidence;
+
+    // Append to existing text
+    const currentText = descriptionField.value;
+    descriptionField.value = currentText
+      ? currentText + " " + transcript
+      : transcript;
+
+    statusDiv.innerHTML = `✅ <span style="color: #059669; font-weight: 600;">Captured: "${transcript.substring(
+      0,
+      50
+    )}..."</span>`;
+
+    stopListening();
+
+    // Auto-hide status after 3 seconds
+    setTimeout(() => {
+      statusDiv.innerHTML = "";
+    }, 3000);
+  };
+
+  // Handle errors
+  voiceRecognition.onerror = (event) => {
+    console.error("Speech recognition error:", event.error);
+
+    let errorMessage = "";
+    switch (event.error) {
+      case "no-speech":
+        errorMessage = "🔇 No speech detected. Please try again.";
+        break;
+      case "audio-capture":
+        errorMessage = "🎤 Microphone not found. Please check permissions.";
+        break;
+      case "not-allowed":
+        errorMessage =
+          "🚫 Microphone access denied. Please enable in browser settings.";
+        break;
+      default:
+        errorMessage = `❌ Error: ${event.error}`;
+    }
+
+    statusDiv.innerHTML = `<span style="color: #ef4444;">${errorMessage}</span>`;
+    stopListening();
+
+    setTimeout(() => {
+      statusDiv.innerHTML = "";
+    }, 4000);
+  };
+
+  voiceRecognition.onend = () => {
+    stopListening();
+  };
+}
+
+// ============================================
+// IMAGE UPLOAD + AI ANALYSIS FEATURE
+// ============================================
+
+let uploadedImageFile = null;
+let uploadedImageBase64 = null;
+
+function initializeImageUpload() {
+  const imageInput = document.getElementById("complaint-image");
+
+  if (!imageInput) return;
+
+  imageInput.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      alert("❌ Please upload an image file (JPG, PNG, etc.)");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("❌ Image size must be less than 5MB");
+      return;
+    }
+
+    uploadedImageFile = file;
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      uploadedImageBase64 = event.target.result;
+
+      const previewContainer = document.getElementById(
+        "image-preview-container"
+      );
+      const previewImg = document.getElementById("image-preview");
+
+      previewImg.src = uploadedImageBase64;
+      previewContainer.style.display = "block";
+
+      // Trigger AI analysis
+      await analyzeImageWithAI(file);
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+function removeImage() {
+  uploadedImageFile = null;
+  uploadedImageBase64 = null;
+
+  document.getElementById("complaint-image").value = "";
+  document.getElementById("image-preview-container").style.display = "none";
+  document.getElementById("ai-analysis-result").style.display = "none";
+  document.getElementById("image-preview").src = "";
+}
+
+async function analyzeImageWithAI(imageFile) {
+  const resultDiv = document.getElementById("ai-analysis-result");
+
+  // Show loading
+  resultDiv.style.display = "block";
+  resultDiv.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div class="ai-spinner" style="width: 24px; height: 24px; border: 3px solid #e2e8f0; border-top-color: #10b981; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+      <span style="color: #065f46; font-weight: 600;">🤖 AI analyzing image...</span>
+    </div>
+  `;
+
+  try {
+    // Convert image to base64
+    const base64Image = await convertImageToBase64(imageFile);
+
+    // Call Gemini Vision API
+    const analysis = await analyzeImageWithGemini(base64Image);
+
+    // Display results
+    displayImageAnalysis(analysis);
+
+    // Auto-fill form based on AI analysis
+    autoFillFormFromImageAnalysis(analysis);
+  } catch (error) {
+    console.error("Image analysis error:", error);
+    resultDiv.innerHTML = `
+      <div style="color: #dc2626; font-weight: 600;">
+        ⚠️ AI analysis unavailable. You can still submit manually.
+      </div>
+    `;
+  }
+}
+
+async function convertImageToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // Extract base64 part (remove data:image/...;base64, prefix)
+      const base64 = reader.result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function analyzeImageWithGemini(base64Image) {
+  const API_ENDPOINT = getApiEndpoint();
+
+  const prompt = `You are an expert civic infrastructure analyst for Maharashtra Government. Analyze this image in EXTREME DETAIL.
+
+CRITICAL INSTRUCTIONS:
+- Look at what is ACTUALLY visible in the image
+- Be SPECIFIC about what you see (colors, damage extent, environmental conditions)
+- Don't make generic assumptions
+
+COMPLAINT TYPES (choose the MOST accurate one):
+- "Road Repair" → potholes, cracks, broken asphalt, uneven surface, road damage
+- "Water Supply" → broken pipes, water leakage, flooding, no water, burst mains
+- "Garbage Collection" → trash piles, overflowing bins, littering, waste accumulation
+- "Street Lights" → broken poles, non-functional lights, dark streets, damaged fixtures
+- "Drainage" → clogged drains, sewage overflow, waterlogging, blocked gutters
+- "Electricity" → fallen wires, power cuts, transformer issues, electrical hazards
+- "Healthcare" → hospital/clinic infrastructure issues, medical waste, facility damage
+- "Public Transport" → damaged bus stops, broken shelters, road signs, traffic issues
+
+SEVERITY RULES (be precise):
+- Critical: Immediate danger to life, major infrastructure failure, affects 200+ people
+- High: Significant damage, urgent action needed, affects 50-200 people
+- Medium: Noticeable problem, needs attention within week, affects 10-50 people
+- Low: Minor issue, routine maintenance, affects <10 people
+
+ANALYZE THE IMAGE AND RETURN ONLY THIS JSON (no markdown, no backticks):
+{
+  "complaint_type": "exact type from list above",
+  "severity": "Critical/High/Medium/Low",
+  "description": "DETAILED description: what EXACTLY you see - mention specific damage, colors, size, location details, environmental conditions. Be descriptive like a field inspector would report.",
+  "affected_count": realistic_number_based_on_visible_area,
+  "department": "appropriate department name",
+  "confidence": percentage_0_to_100,
+  "detected_objects": ["specific object 1", "specific object 2", "specific object 3"],
+  "damage_assessment": {
+    "extent": "describe the size/spread of damage",
+    "urgency_factors": ["factor 1", "factor 2"],
+    "visible_risks": ["risk 1", "risk 2"]
+  }
+}
+
+EXAMPLE GOOD RESPONSE:
+{
+  "complaint_type": "Road Repair",
+  "severity": "High",
+  "description": "Large pothole approximately 3 feet wide and 8 inches deep visible on main road. Broken asphalt edges show recent damage. Water accumulation in cavity indicates drainage issues. Located on what appears to be a busy street with visible vehicle traffic marks around the damage.",
+  "affected_count": 150,
+  "department": "PWD",
+  "confidence": 92,
+  "detected_objects": ["large pothole", "cracked asphalt", "water accumulation", "road marking"],
+  "damage_assessment": {
+    "extent": "Single large cavity covering approximately 10 square feet",
+    "urgency_factors": ["high traffic area", "vehicle damage risk", "water accumulation"],
+    "visible_risks": ["vehicle damage", "accident potential", "further deterioration"]
+  }
+}`;
+
+  const requestBody = {
+    contents: [
+      {
+        parts: [
+          { text: prompt },
+          {
+            inline_data: {
+              mime_type: "image/jpeg",
+              data: base64Image,
+            },
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.3,
+      maxOutputTokens: 2048,
+      topP: 0.8,
+      topK: 40,
+    },
+  };
+
+  try {
+    const response = await fetch(API_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    let text = "";
+    if (data.candidates && data.candidates.length > 0) {
+      const candidate = data.candidates[0];
+      if (
+        candidate.content &&
+        candidate.content.parts &&
+        candidate.content.parts.length > 0
+      ) {
+        text = candidate.content.parts[0].text || "";
+      }
+    }
+
+    if (!text) {
+      throw new Error("No response from AI");
+    }
+
+    // Parse JSON from response
+    const cleanText = text
+      .trim()
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/gi, "")
+      .replace(/^[^{]*({)/, "$1")
+      .replace(/(})[^}]*$/, "$1");
+
+    const analysis = JSON.parse(cleanText);
+    analysis.source = "gemini-vision";
+
+    console.log("✅ Gemini Vision Analysis:", analysis);
+
+    return analysis;
+  } catch (error) {
+    console.error("Gemini Vision API error:", error);
+
+    // Improved fallback
+    return generateBasicImageAnalysis();
+  }
+}
+
+function generateBasicImageAnalysis() {
+  // Better fallback with realistic data
+  return {
+    complaint_type: "Infrastructure",
+    severity: "Medium",
+    description:
+      "Unable to perform AI analysis at this moment. Please provide a detailed description manually of what you see in the image: type of damage, location, severity, and any immediate risks.",
+    affected_count: 25,
+    department: "Municipal Corporation",
+    confidence: 45,
+    detected_objects: ["infrastructure issue detected"],
+    damage_assessment: {
+      extent: "Cannot determine without AI analysis",
+      urgency_factors: ["manual review required"],
+      visible_risks: ["please describe in complaint"],
+    },
+    source: "fallback",
+    note: "⚠️ AI analysis unavailable. Please fill the form manually with accurate details.",
+  };
+}
+
+function displayImageAnalysis(analysis) {
+  // Remove any existing modal
+  const existingModal = document.getElementById("ai-analysis-modal");
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  const confidenceColor =
+    analysis.confidence >= 80
+      ? "#059669"
+      : analysis.confidence >= 60
+      ? "#f59e0b"
+      : "#ef4444";
+
+  const confidenceLabel =
+    analysis.confidence >= 80
+      ? "High Confidence"
+      : analysis.confidence >= 60
+      ? "Medium Confidence"
+      : "Low Confidence";
+
+  const isFallback = analysis.source === "fallback";
+
+  // Create modal overlay
+  const modal = document.createElement("div");
+  modal.id = "ai-analysis-modal";
+  modal.className = "ai-modal-overlay";
+
+  modal.innerHTML = `
+    <div class="ai-modal-container">
+      <!-- Close Button -->
+      <button class="ai-modal-close" onclick="closeAIAnalysisModal()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <!-- Header Section -->
+      <div class="ai-modal-header">
+        <div class="ai-header-left">
+          <div class="ai-icon">🤖</div>
+          <div>
+            <h2>AI Image Analysis ${
+              isFallback ? "- Manual Review Needed" : "Complete"
+            }</h2>
+            <p>Powered by Google Gemini Vision AI</p>
+          </div>
+        </div>
+        <div class="ai-confidence-badge" style="background: ${confidenceColor};">
+          <span class="confidence-value">${analysis.confidence}%</span>
+          <span class="confidence-label">${confidenceLabel}</span>
+        </div>
+      </div>
+
+      ${
+        isFallback
+          ? `
+        <div class="ai-fallback-notice">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <div>
+            <strong>AI Analysis Unavailable</strong>
+            <p>Please manually fill the form below with accurate complaint details.</p>
+          </div>
+        </div>
+      `
+          : ""
+      }
+
+      <!-- Main Content Grid -->
+      <div class="ai-modal-content">
+        <div class="ai-result-grid">
+          <!-- Left Column -->
+          <div class="ai-result-column">
+            <div class="ai-detail-card primary">
+              <div class="detail-icon">📋</div>
+              <div class="detail-content">
+                <label>Detected Issue Type</label>
+                <h3>${analysis.complaint_type}</h3>
+              </div>
+            </div>
+
+            <div class="ai-detail-card ${analysis.severity.toLowerCase()}">
+              <div class="detail-icon">⚠️</div>
+              <div class="detail-content">
+                <label>Severity Level</label>
+                <h3>${analysis.severity}</h3>
+              </div>
+            </div>
+
+            <div class="ai-detail-card">
+              <div class="detail-icon">👥</div>
+              <div class="detail-content">
+                <label>Estimated Citizens Affected</label>
+                <h3>${analysis.affected_count}</h3>
+              </div>
+            </div>
+
+            <div class="ai-detail-card">
+              <div class="detail-icon">🏛️</div>
+              <div class="detail-content">
+                <label>Assigned Department</label>
+                <h3>${analysis.department}</h3>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="ai-result-column">
+            <div class="ai-description-box">
+              <label><strong>📝 AI-Generated Description</strong></label>
+              <p>${analysis.description}</p>
+            </div>
+
+            ${
+              analysis.detected_objects && analysis.detected_objects.length > 0
+                ? `
+              <div class="ai-objects-detected">
+                <label><strong>🔍 Detected Objects</strong></label>
+                <div class="object-tags">
+                  ${analysis.detected_objects
+                    .map((obj) => `<span class="object-tag">${obj}</span>`)
+                    .join("")}
+                </div>
+              </div>
+            `
+                : ""
+            }
+
+            ${
+              analysis.damage_assessment
+                ? `
+              <div class="ai-damage-assessment">
+                <label><strong>🔧 Damage Assessment</strong></label>
+                <div class="assessment-item">
+                  <strong>Extent:</strong> ${analysis.damage_assessment.extent}
+                </div>
+                ${
+                  analysis.damage_assessment.urgency_factors
+                    ? `
+                  <div class="assessment-item">
+                    <strong>Urgency Factors:</strong>
+                    <ul>
+                      ${analysis.damage_assessment.urgency_factors
+                        .map((factor) => `<li>${factor}</li>`)
+                        .join("")}
+                    </ul>
+                  </div>
+                `
+                    : ""
+                }
+                ${
+                  analysis.damage_assessment.visible_risks
+                    ? `
+                  <div class="assessment-item">
+                    <strong>Visible Risks:</strong>
+                    <ul>
+                      ${analysis.damage_assessment.visible_risks
+                        .map((risk) => `<li>${risk}</li>`)
+                        .join("")}
+                    </ul>
+                  </div>
+                `
+                    : ""
+                }
+              </div>
+            `
+                : ""
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="ai-modal-footer">
+        <div class="footer-info">
+          <div class="footer-icon">✨</div>
+          <div class="footer-text">
+            <strong>Form Auto-Filled Successfully!</strong>
+            <p>Review the analysis above, then close this window to edit and submit your complaint.</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeAIAnalysisModal()">
+          Close & Review Form
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Animate modal entrance
+  setTimeout(() => {
+    modal.classList.add("active");
+  }, 10);
+
+  // Store analysis result in a temporary div (hidden) for reference
+  const resultDiv = document.getElementById("ai-analysis-result");
+  resultDiv.innerHTML = `
+    <div class="ai-analysis-complete-notice">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+      <div>
+        <strong>✅ AI Analysis Complete</strong>
+        <p>Form has been auto-filled based on image analysis. Please verify all details before submitting.</p>
+      </div>
+    </div>
+  `;
+  resultDiv.style.display = "block";
+}
+
+// Function to close modal
+function closeAIAnalysisModal() {
+  const modal = document.getElementById("ai-analysis-modal");
+  if (modal) {
+    modal.classList.remove("active");
+    setTimeout(() => {
+      modal.remove();
+    }, 300);
+  }
+}
+
+// Close modal when clicking outside
+document.addEventListener("click", function (e) {
+  const modal = document.getElementById("ai-analysis-modal");
+  if (modal && e.target === modal) {
+    closeAIAnalysisModal();
+  }
+});
+
+// Close modal with Escape key
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") {
+    closeAIAnalysisModal();
+  }
+});
+
+// Function to close modal
+function closeAIAnalysisModal() {
+  const modal = document.getElementById("ai-analysis-modal");
+  if (modal) {
+    modal.classList.remove("active");
+    setTimeout(() => {
+      modal.remove();
+    }, 300);
+  }
+}
+
+// Close modal when clicking outside
+document.addEventListener("click", function (e) {
+  const modal = document.getElementById("ai-analysis-modal");
+  if (modal && e.target === modal) {
+    closeAIAnalysisModal();
+  }
+});
+
+// Close modal with Escape key
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") {
+    closeAIAnalysisModal();
+  }
+});
+
+function autoFillFormFromImageAnalysis(analysis) {
+  // Auto-fill complaint type
+  const typeSelect = document.querySelector('select[name="complaint_type"]');
+  if (typeSelect) {
+    typeSelect.value = analysis.complaint_type;
+  }
+
+  // Auto-fill severity
+  const severitySelect = document.querySelector('select[name="severity"]');
+  if (severitySelect) {
+    severitySelect.value = analysis.severity;
+  }
+
+  // Auto-fill description (prepend AI analysis)
+  const descriptionField = document.getElementById("complaint-description");
+  if (descriptionField) {
+    const aiPrefix = `[AI Detected: ${analysis.description}]\n\n`;
+    const currentText = descriptionField.value;
+
+    // Only add if not already there
+    if (!currentText.includes("[AI Detected:")) {
+      descriptionField.value = aiPrefix + currentText;
+    }
+  }
+
+  // Auto-fill affected count
+  const affectedInput = document.querySelector('input[name="affected_count"]');
+  if (affectedInput && analysis.affected_count) {
+    affectedInput.value = analysis.affected_count;
+  }
+
+  console.log("✅ Form auto-filled from AI analysis");
+}
+
+// ============================================
+// REAL-TIME ALERT SYSTEM FOR OFFICIALS
+// ============================================
+
+async function sendOfficialAlerts(requestData) {
+  // Only send alerts for High and Critical severity
+  if (requestData.severity !== "High" && requestData.severity !== "Critical") {
+    console.log("ℹ️ Alert skipped - severity is not High/Critical");
+    return;
+  }
+
+  console.log(
+    "🚨 Sending alerts for critical request:",
+    requestData.request_id
+  );
+
+  // Show alert notification in UI
+  showAlertNotification(requestData);
+
+  // Send email notification (simulated)
+  await sendEmailAlert(requestData);
+
+  // Send SMS notification (simulated)
+  await sendSMSAlert(requestData);
+
+  // Store alert in database
+  await storeAlertRecord(requestData);
+}
+
+function showAlertNotification(requestData) {
+  const notification = document.createElement("div");
+  notification.className = "alert-notification";
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+    padding: 20px 24px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+    border-left: 5px solid #ef4444;
+    z-index: 10000;
+    min-width: 350px;
+    max-width: 450px;
+    animation: slideInRight 0.4s ease-out;
+  `;
+
+  notification.innerHTML = `
+    <div style="display: flex; align-items: start; gap: 12px;">
+      <div style="font-size: 24px; animation: pulse 2s infinite;">🚨</div>
+      <div style="flex: 1;">
+        <h4 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 700;">
+          ${requestData.severity} Alert Triggered!
+        </h4>
+        <p style="margin: 0 0 6px 0; font-size: 14px; line-height: 1.5;">
+          <strong>ID:</strong> ${requestData.request_id}<br>
+          <strong>Type:</strong> ${requestData.complaint_type}<br>
+          <strong>Location:</strong> ${requestData.city}, ${requestData.ward}
+        </p>
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(153, 27, 27, 0.2); font-size: 13px;">
+          <strong>✉️ Email sent to:</strong> ${requestData.department
+            .toLowerCase()
+            .replace(/ /g, "")}@maharashtra.gov.in<br>
+          <strong>📱 SMS sent to:</strong> Department Head
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(notification);
+
+  // Auto-remove after 8 seconds
+  setTimeout(() => {
+    notification.style.animation = "fadeOut 0.4s ease-out";
+    setTimeout(() => notification.remove(), 400);
+  }, 8000);
+}
+
+async function sendEmailAlert(requestData) {
+  // Simulated email sending
+  const emailData = {
+    to: `${requestData.department
+      .toLowerCase()
+      .replace(/ /g, "")}@maharashtra.gov.in`,
+    subject: `🚨 ${requestData.severity} Priority Alert - ${requestData.request_id}`,
+    body: generateEmailBody(requestData),
+  };
+
+  console.log("📧 Email Alert Sent:", emailData);
+
+  // In production, you would call an actual email API here
+  // await fetch('/api/send-email', { method: 'POST', body: JSON.stringify(emailData) });
+
+  return emailData;
+}
+
+async function sendSMSAlert(requestData) {
+  // Simulated SMS sending
+  const smsData = {
+    to: getDepartmentPhoneNumber(requestData.department),
+    message: `🚨 URGENT: ${requestData.severity} complaint ${requestData.request_id} in ${requestData.city}. ${requestData.complaint_type}. Affected: ${requestData.affected_count} citizens. Login: https://maharashtra-ai-gov.com`,
+  };
+
+  console.log("📱 SMS Alert Sent:", smsData);
+
+  // In production, you would call Twilio or similar SMS API here
+  // await fetch('/api/send-sms', { method: 'POST', body: JSON.stringify(smsData) });
+
+  return smsData;
+}
+
+function generateEmailBody(requestData) {
+  return `
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+          <h1 style="margin: 0; font-size: 24px;">🚨 ${
+            requestData.severity
+          } Priority Alert</h1>
+        </div>
+        
+        <div style="padding: 20px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0 0 8px 8px;">
+          <h2 style="color: #ef4444; margin-top: 0;">Complaint Details</h2>
+          
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px; font-weight: bold; width: 150px;">Request ID:</td>
+              <td style="padding: 8px;">${requestData.request_id}</td>
+            </tr>
+            <tr style="background: white;">
+              <td style="padding: 8px; font-weight: bold;">Type:</td>
+              <td style="padding: 8px;">${requestData.complaint_type}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; font-weight: bold;">Severity:</td>
+              <td style="padding: 8px;"><strong style="color: #ef4444;">${
+                requestData.severity
+              }</strong></td>
+            </tr>
+            <tr style="background: white;">
+              <td style="padding: 8px; font-weight: bold;">Location:</td>
+              <td style="padding: 8px;">${requestData.city}, ${
+    requestData.ward
+  }</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; font-weight: bold;">Citizens Affected:</td>
+              <td style="padding: 8px;"><strong>${
+                requestData.affected_count
+              }</strong></td>
+            </tr>
+            <tr style="background: white;">
+              <td style="padding: 8px; font-weight: bold;">Department:</td>
+              <td style="padding: 8px;">${requestData.department}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; font-weight: bold;">Date Submitted:</td>
+              <td style="padding: 8px;">${new Date(
+                requestData.date_submitted
+              ).toLocaleString()}</td>
+            </tr>
+          </table>
+          
+          <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+            <h3 style="margin: 0 0 10px 0; color: #92400e;">Description:</h3>
+            <p style="margin: 0;">${requestData.description}</p>
+          </div>
+          
+          <div style="margin-top: 25px; text-align: center;">
+            <a href="https://maharashtra-ai-gov.com/dashboard" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+              View in Dashboard →
+            </a>
+          </div>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #f3f4f6; border-radius: 8px; font-size: 12px; color: #6b7280;">
+          <p style="margin: 0;">This is an automated alert from Maharashtra AI Governance Platform.</p>
+          <p style="margin: 5px 0 0 0;">Please login to the dashboard to update the status and manage this request.</p>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+function getDepartmentPhoneNumber(department) {
+  // Mock phone numbers for each department
+  const phoneNumbers = {
+    "Water Department": "+91-9876543210",
+    MSEDCL: "+91-9876543211",
+    PWD: "+91-9876543212",
+    "Health Department": "+91-9876543213",
+    "Sanitation Department": "+91-9876543214",
+    "Municipal Corporation": "+91-9876543215",
+    "Transport Department": "+91-9876543216",
+  };
+
+  return phoneNumbers[department] || "+91-9876543210";
+}
+
+async function storeAlertRecord(requestData) {
+  try {
+    const alertRecord = {
+      request_id: requestData.request_id,
+      alert_type: requestData.severity,
+      department: requestData.department,
+      email_sent: true,
+      sms_sent: true,
+      timestamp: new Date().toISOString(),
+      status: "Sent",
+    };
+
+    // Store in localStorage for demo (in production, use Supabase)
+    const alerts = JSON.parse(localStorage.getItem("maha_alerts") || "[]");
+    alerts.push(alertRecord);
+    localStorage.setItem("maha_alerts", JSON.stringify(alerts));
+
+    console.log("✅ Alert record stored:", alertRecord);
+  } catch (error) {
+    console.error("Error storing alert:", error);
+  }
+}
+
+// Add CSS animation for notification
+const style = document.createElement("style");
+style.textContent = `
+  @keyframes slideInRight {
+    from {
+      transform: translateX(400px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes fadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      transform: translateX(400px);
+    }
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+  }
+`;
+document.head.appendChild(style);
+
+function loadRecentAlerts() {
+  const session = JSON.parse(localStorage.getItem("maha_session"));
+
+  // Only show for officials
+  if (session?.role !== "official") {
+    console.log("❌ Not an official, hiding alerts section");
+    return;
+  }
+
+  console.log("✅ Loading alerts for official");
+
+  const alertsSection = document.getElementById("recent-alerts-section");
+  const container = document.getElementById("recent-alerts-container");
+
+  if (!alertsSection || !container) {
+    console.error("❌ Alert section or container not found in HTML");
+    return;
+  }
+
+  const alerts = JSON.parse(localStorage.getItem("maha_alerts") || "[]");
+  console.log("📊 Found alerts:", alerts.length);
+
+  // ✅ FORCE VISIBILITY - REMOVE display: none
+  alertsSection.style.display = "block";
+  alertsSection.style.visibility = "visible";
+  alertsSection.style.opacity = "1";
+
+  if (alerts.length === 0) {
+    container.innerHTML = `
+      <div style="background: white; padding: 20px; border-radius: 10px; text-align: center; color: #64748b;">
+        <p style="margin: 0;">No critical alerts have been triggered yet.</p>
+      </div>
+    `;
+    console.log("✅ Showing empty state");
+    return;
+  }
+
+  // Show last 10 alerts (most recent first)
+  const recentAlerts = alerts.slice(-10).reverse();
+
+  container.innerHTML = recentAlerts
+    .map(
+      (alert) => `
+    <div class="alert-log-item" style="background: white; padding: 16px; border-radius: 10px; border-left: 4px solid #ef4444; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+        <div>
+          <strong style="color: #991b1b; font-size: 15px;">🚨 ${
+            alert.alert_type
+          } Alert</strong>
+          <span style="color: #64748b; font-size: 13px; margin-left: 12px;">ID: ${
+            alert.request_id
+          }</span>
+        </div>
+        <span style="font-size: 12px; color: #64748b;">${new Date(
+          alert.timestamp
+        ).toLocaleString()}</span>
+      </div>
+      <div style="font-size: 14px; color: #475569;">
+        <strong>Department:</strong> ${alert.department}
+      </div>
+      <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 13px;">
+        <span style="color: #059669;">✉️ Email: ${
+          alert.email_sent ? "Sent" : "Failed"
+        }</span>
+        <span style="color: #059669;">📱 SMS: ${
+          alert.sms_sent ? "Sent" : "Failed"
+        }</span>
+      </div>
+    </div>
+  `
+    )
+    .join("");
+
+  console.log(`✅ Displayed ${recentAlerts.length} alerts`);
+  console.log("✅ Alert section should now be VISIBLE");
 }
 
 console.log("✅ Hybrid Gemini API system loaded!");
