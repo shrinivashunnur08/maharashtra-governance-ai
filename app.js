@@ -23,6 +23,8 @@ let speechTimeout = null;
 const SILENCE_DURATION = 2500; // 2.5 seconds
 const MAX_RECORDING_TIME = 45000; // 45 seconds
 
+let uploadedImageFile = null;
+let uploadedImageBase64 = null;
 // ============================================
 // AUTHENTICATION FUNCTIONS
 // ============================================
@@ -3679,9 +3681,6 @@ User speaks:
 // ============================================
 // IMAGE UPLOAD + AI ANALYSIS FEATURE
 // ============================================
-
-let uploadedImageFile = null;
-let uploadedImageBase64 = null;
 
 function initializeImageUpload() {
   const imageInput = document.getElementById("complaint-image");
