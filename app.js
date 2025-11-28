@@ -712,6 +712,12 @@ function setupEventListeners() {
 }
 
 function navigateToPage(pageName) {
+  // ✅ FIX: Cleanup map when leaving transparency page
+  const currentPage = document.querySelector(".page-content.active");
+  if (currentPage && currentPage.id === "transparency-page") {
+    cleanupHeatmap();
+  }
+
   document.querySelectorAll(".nav-link").forEach((link) => {
     link.classList.remove("active");
     if (link.dataset.page === pageName) {
@@ -1645,10 +1651,16 @@ async function handleComplaintSubmission(e) {
       progress: 20,
     },
     {
+      title: "📍 Capturing GPS location...",
+      subtitle: "Getting precise coordinates",
+      duration: 1000,
+      progress: 40,
+    },
+    {
       title: "🔐 Securing your information...",
       subtitle: "Encrypting personal details",
-      duration: 1000,
-      progress: 50,
+      duration: 800,
+      progress: 60,
     },
     {
       title: "💾 Saving to database...",
@@ -1677,6 +1689,42 @@ async function handleComplaintSubmission(e) {
   }
 
   try {
+    // ✅ CAPTURE GPS COORDINATES
+    let latitude = null;
+    let longitude = null;
+
+    if (navigator.geolocation) {
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 5000,
+            enableHighAccuracy: true,
+            maximumAge: 0,
+          });
+        });
+
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+        console.log("✅ GPS captured:", latitude, longitude);
+      } catch (gpsError) {
+        console.log("⚠️ GPS not available:", gpsError.message);
+        // Fallback: Use city center coordinates
+        const cityCoords = cityCoordinates[data.city];
+        if (cityCoords) {
+          latitude = cityCoords[0];
+          longitude = cityCoords[1];
+          console.log("📍 Using city center coordinates");
+        }
+      }
+    } else {
+      console.log("⚠️ Geolocation not supported, using city center");
+      const cityCoords = cityCoordinates[data.city];
+      if (cityCoords) {
+        latitude = cityCoords[0];
+        longitude = cityCoords[1];
+      }
+    }
+
     const { count, error: countError } = await supabaseClient
       .from("citizen_requests")
       .select("*", { count: "exact", head: true });
@@ -1712,7 +1760,9 @@ async function handleComplaintSubmission(e) {
       department: deptMapping[data.complaint_type],
       date_submitted: new Date().toISOString(),
       has_image: uploadedImageBase64 ? true : false,
-      image_url: uploadedImageBase64 || null, // Store base64 image
+      image_url: uploadedImageBase64 || null,
+      latitude: latitude, // ✅ ADD GPS
+      longitude: longitude, // ✅ ADD GPS
     };
 
     const { error } = await supabaseClient
@@ -1721,16 +1771,22 @@ async function handleComplaintSubmission(e) {
 
     if (error) throw error;
 
-    // ✅ Send alerts for critical/high severity complaints
+    // Send alerts for critical/high severity complaints
     await sendOfficialAlerts(requestData);
 
-    // Show success message
+    // Show success message with GPS status
+    const gpsStatus =
+      latitude && longitude
+        ? "📍 GPS location captured successfully"
+        : "📍 City-level location used";
+
     resultDiv.innerHTML = `
       <div class="alert-success" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; padding: 24px; border-radius: 12px; border-left: 5px solid #10b981; margin-top: 20px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);">
         <h3 style="margin: 0 0 15px 0;">✅ Complaint Submitted Successfully!</h3>
         <p style="margin: 8px 0;"><strong>Request ID:</strong> ${requestId}</p>
         <p style="margin: 8px 0;"><strong>Department:</strong> ${requestData.department}</p>
         <p style="margin: 8px 0;"><strong>Status:</strong> Open</p>
+        <p style="margin: 8px 0; color: #059669; font-size: 14px;">${gpsStatus}</p>
         <p style="margin: 8px 0;">You will receive updates via SMS/Email.</p>
         <p style="margin: 8px 0;"><strong>Estimated Response Time:</strong> 2-3 business days</p>
       </div>
@@ -1761,7 +1817,6 @@ async function handleComplaintSubmission(e) {
       </div>
     `;
 
-    // Auto-hide error message after 6 seconds
     setTimeout(() => {
       resultDiv.style.opacity = "0";
       resultDiv.style.transition = "opacity 0.5s";
@@ -1936,10 +1991,15 @@ function showTrackingResult(request) {
 
 async function loadTransparencyData() {
   try {
-    // Initialize heatmap with proper delay
-    setTimeout(() => {
-      initializeHeatmap();
-    }, 200);
+    // ✅ FIX: Only initialize if not already done
+    if (!heatmapInstance) {
+      setTimeout(() => {
+        initializeHeatmap();
+      }, 200);
+    } else {
+      // Map already exists, just reload data
+      await loadHeatmapData();
+    }
 
     const { data: requests, error } = await supabaseClient
       .from("citizen_requests")
@@ -1956,6 +2016,19 @@ async function loadTransparencyData() {
     document.getElementById("resolution-time").textContent = `${avgDays} days`;
   } catch (error) {
     console.error("Error loading transparency data:", error);
+  }
+}
+
+function cleanupHeatmap() {
+  if (heatmapInstance) {
+    try {
+      heatmapInstance.remove();
+      heatmapInstance = null;
+      heatmapMarkers = [];
+      console.log("✅ Heatmap cleaned up");
+    } catch (error) {
+      console.error("Cleanup error:", error);
+    }
   }
 }
 
@@ -1988,11 +2061,17 @@ async function initializeHeatmap() {
     return;
   }
 
-  // Clear any existing content
+  // ✅ FIX: Check if map already exists
+  if (heatmapInstance) {
+    console.log("♻️ Map already initialized, reloading data only");
+    await loadHeatmapData();
+    return;
+  }
+
+  // Clear container HTML
   mapContainer.innerHTML = "";
 
   try {
-    // Initialize Leaflet map centered on Maharashtra
     heatmapInstance = L.map("complaint-heatmap", {
       center: [19.7515, 75.7139],
       zoom: 7,
@@ -2000,30 +2079,23 @@ async function initializeHeatmap() {
       scrollWheelZoom: true,
     });
 
-    // Add OpenStreetMap tiles
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap contributors",
       maxZoom: 18,
     }).addTo(heatmapInstance);
 
-    // Force Leaflet to recalculate size
     setTimeout(() => {
       heatmapInstance.invalidateSize();
     }, 100);
 
     console.log("✅ Map instance created, loading data...");
-
-    // Load heatmap data (without await to prevent blocking)
-    loadHeatmapData()
-      .then(() => {
-        console.log("✅ Heatmap data loaded");
-      })
-      .catch((err) => {
-        console.error("❌ Error loading heatmap data:", err);
-        displayDemoHeatmap();
-      });
+    await loadHeatmapData();
   } catch (error) {
     console.error("❌ Heatmap initialization error:", error);
+
+    // ✅ FIX: Reset map instance on error
+    heatmapInstance = null;
+
     mapContainer.innerHTML = `
       <div style="padding: 40px; text-align: center; color: #dc2626;">
         <p>⚠️ Failed to load heatmap. Please refresh the page.</p>
@@ -2083,41 +2155,78 @@ async function loadHeatmapData(filter = "all") {
 
 function renderHeatmapPoints(requests) {
   const heatmapPoints = [];
-  const cityGroups = {};
 
   requests.forEach((req) => {
-    const coords = cityCoordinates[req.city];
-    if (coords) {
-      // Add random offset for visual distribution
-      const latOffset = (Math.random() - 0.5) * 0.2;
-      const lngOffset = (Math.random() - 0.5) * 0.2;
+    // Use real coordinates if available, otherwise use city coordinates
+    let lat, lng;
 
-      const lat = coords[0] + latOffset;
-      const lng = coords[1] + lngOffset;
+    if (req.latitude && req.longitude) {
+      lat = req.latitude;
+      lng = req.longitude;
+    } else {
+      const coords = cityCoordinates[req.city];
+      if (!coords) return;
 
-      // Weight by severity
-      let intensity = 0.5;
-      if (req.severity === "Critical") intensity = 1.0;
-      else if (req.severity === "High") intensity = 0.8;
-      else if (req.severity === "Medium") intensity = 0.5;
-      else intensity = 0.3;
-
-      heatmapPoints.push([lat, lng, intensity]);
-
-      // Group by city
-      if (!cityGroups[req.city]) {
-        cityGroups[req.city] = {
-          coords: coords,
-          count: 0,
-          critical: 0,
-          types: {},
-        };
-      }
-      cityGroups[req.city].count++;
-      if (req.severity === "Critical") cityGroups[req.city].critical++;
-      cityGroups[req.city].types[req.complaint_type] =
-        (cityGroups[req.city].types[req.complaint_type] || 0) + 1;
+      // Small random offset for visualization
+      lat = coords[0] + (Math.random() - 0.5) * 0.05;
+      lng = coords[1] + (Math.random() - 0.5) * 0.05;
     }
+
+    // Weight by severity
+    let intensity = 0.5;
+    if (req.severity === "Critical") intensity = 1.0;
+    else if (req.severity === "High") intensity = 0.8;
+    else if (req.severity === "Medium") intensity = 0.5;
+    else intensity = 0.3;
+
+    heatmapPoints.push([lat, lng, intensity]);
+
+    // Add individual marker
+    const marker = L.circleMarker([lat, lng], {
+      radius: 8,
+      fillColor:
+        req.severity === "Critical"
+          ? "#ef4444"
+          : req.severity === "High"
+          ? "#f59e0b"
+          : req.severity === "Medium"
+          ? "#3b82f6"
+          : "#10b981",
+      color: "#fff",
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.8,
+    }).addTo(heatmapInstance);
+
+    marker.bindPopup(`
+      <div style="font-family: Arial; min-width: 250px;">
+        <h4 style="margin: 0 0 10px 0; color: #1e40af; font-size: 16px;">${
+          req.request_id
+        }</h4>
+        <p style="margin: 5px 0;"><strong>Type:</strong> ${
+          req.complaint_type
+        }</p>
+        <p style="margin: 5px 0;"><strong>Severity:</strong> <span style="color: ${
+          req.severity === "Critical" ? "#ef4444" : "#3b82f6"
+        };">${req.severity}</span></p>
+        <p style="margin: 5px 0;"><strong>Location:</strong> ${req.city}, ${
+      req.ward
+    }</p>
+        <p style="margin: 5px 0;"><strong>Status:</strong> ${req.status}</p>
+        <p style="margin: 5px 0;"><strong>Affected:</strong> ${
+          req.affected_count
+        }</p>
+        <p style="margin: 10px 0 5px 0;"><strong>Description:</strong></p>
+        <p style="margin: 0; font-size: 13px; color: #475569;">${req.description.substring(
+          0,
+          100
+        )}...</p>
+      </div>
+    `);
+
+    // Store marker with request ID for search
+    marker.requestId = req.request_id;
+    heatmapMarkers.push(marker);
   });
 
   // Add heatmap layer
@@ -2136,36 +2245,6 @@ function renderHeatmapPoints(requests) {
       },
     }).addTo(heatmapInstance);
   }
-
-  // Add city markers
-  Object.entries(cityGroups).forEach(([city, data]) => {
-    const marker = L.circleMarker(data.coords, {
-      radius: Math.sqrt(data.count) * 3,
-      fillColor: data.critical > 0 ? "#ef4444" : "#3b82f6",
-      color: "#fff",
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.8,
-    }).addTo(heatmapInstance);
-
-    const topTypes = Object.entries(data.types)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([type, count]) => `<li>${type}: ${count}</li>`)
-      .join("");
-
-    marker.bindPopup(`
-      <div style="font-family: Arial; min-width: 200px;">
-        <h4 style="margin: 0 0 10px 0; color: #1e40af; font-size: 16px;">${city}</h4>
-        <p style="margin: 5px 0;"><strong>Total:</strong> ${data.count}</p>
-        <p style="margin: 5px 0; color: #dc2626;"><strong>Critical:</strong> ${data.critical}</p>
-        <p style="margin: 10px 0 5px 0; font-weight: 600;">Top Issues:</p>
-        <ul style="margin: 0; padding-left: 20px;">${topTypes}</ul>
-      </div>
-    `);
-
-    heatmapMarkers.push(marker);
-  });
 
   console.log(`✅ Rendered ${heatmapPoints.length} points on heatmap`);
 }
@@ -4963,6 +5042,95 @@ setTimeout(() => {
     badge.style.display = "flex";
   }
 }, 2000);
+
+async function searchComplaintOnMap(requestId) {
+  if (!requestId || !requestId.trim()) {
+    alert("⚠️ Please enter a Request ID");
+    return;
+  }
+
+  requestId = requestId.trim().toUpperCase();
+
+  try {
+    // ✅ FIX: Ensure map is initialized
+    if (!heatmapInstance) {
+      alert("⏳ Map is loading, please try again in a moment...");
+      await initializeHeatmap();
+      return;
+    }
+
+    const { data: complaint, error } = await supabaseClient
+      .from("citizen_requests")
+      .select("*")
+      .eq("request_id", requestId)
+      .single();
+
+    if (error || !complaint) {
+      alert(`❌ Request ID "${requestId}" not found`);
+      return;
+    }
+
+    const marker = heatmapMarkers.find((m) => m.requestId === requestId);
+
+    if (!marker) {
+      alert("⏳ Loading complaint location...");
+      await loadHeatmapData("all");
+
+      const newMarker = heatmapMarkers.find((m) => m.requestId === requestId);
+      if (!newMarker) {
+        alert("❌ Unable to locate complaint on map");
+        return;
+      }
+
+      heatmapInstance.setView(newMarker.getLatLng(), 15, {
+        animate: true,
+        duration: 1.5,
+      });
+
+      setTimeout(() => {
+        newMarker.openPopup();
+      }, 1500);
+
+      return;
+    }
+
+    heatmapInstance.setView(marker.getLatLng(), 15, {
+      animate: true,
+      duration: 1.5,
+    });
+
+    setTimeout(() => {
+      marker.openPopup();
+
+      marker.setStyle({
+        radius: 15,
+        fillColor: "#8b5cf6",
+        color: "#fff",
+        weight: 3,
+      });
+
+      setTimeout(() => {
+        marker.setStyle({
+          radius: 8,
+          fillColor:
+            complaint.severity === "Critical"
+              ? "#ef4444"
+              : complaint.severity === "High"
+              ? "#f59e0b"
+              : complaint.severity === "Medium"
+              ? "#3b82f6"
+              : "#10b981",
+          weight: 2,
+        });
+      }, 3000);
+    }, 1500);
+
+    console.log(`✅ Zoomed to complaint: ${requestId}`);
+  } catch (error) {
+    console.error("Search error:", error);
+    alert("❌ Error searching for complaint");
+  }
+}
 
 // ✅ DEBUG HELPER - Remove in production
 function debugShowAllUsers() {
