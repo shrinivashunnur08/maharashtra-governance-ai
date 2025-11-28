@@ -25,6 +25,11 @@ const MAX_RECORDING_TIME = 45000; // 45 seconds
 
 let uploadedImageFile = null;
 let uploadedImageBase64 = null;
+
+let chatLanguage = "en"; // Default language
+let isChatbotOpen = false;
+let chatVoiceRecognition = null;
+let isChatListening = false;
 // ============================================
 // AUTHENTICATION FUNCTIONS
 // ============================================
@@ -4581,11 +4586,6 @@ function loadRecentAlerts() {
 // ============================================
 // MITRA AI CHATBOT SYSTEM
 // ============================================
-
-let chatLanguage = "en"; // Default language
-let isChatbotOpen = false;
-let chatVoiceRecognition = null;
-let isChatListening = false;
 
 function toggleChatbot() {
   const chatWindow = document.getElementById("chatbot-window");
