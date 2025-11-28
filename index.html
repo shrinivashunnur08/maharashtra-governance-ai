@@ -664,6 +664,40 @@
     <span>🚌 Public Transport</span>
   </button>
 </div>
+
+<!-- Search Bar for Map -->
+<div class="map-search-container" style="margin-bottom: 20px;">
+  <div style="display: flex; gap: 10px; max-width: 600px; flex-wrap: wrap;">
+    <input 
+      type="text" 
+      id="map-search-input" 
+      placeholder="🔍 Enter Request ID (e.g., R001)" 
+      style="flex: 1; min-width: 250px; padding: 14px 18px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; font-weight: 500; transition: all 0.3s;"
+      onkeypress="if(event.key==='Enter') searchComplaintOnMap(this.value)"
+      onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'"
+      onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'"
+    />
+    <button 
+      onclick="searchComplaintOnMap(document.getElementById('map-search-input').value)"
+      style="padding: 14px 28px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 12px rgba(59,130,246,0.3);"
+      onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(59,130,246,0.4)'"
+      onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59,130,246,0.3)'"
+    >
+      🔍 Search & Locate
+    </button>
+    <button 
+      onclick="document.getElementById('map-search-input').value=''; heatmapInstance.setView([19.7515, 75.7139], 7)"
+      style="padding: 14px 20px; background: #f3f4f6; color: #374151; border: 2px solid #e5e7eb; border-radius: 10px; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.3s;"
+      onmouseover="this.style.background='#e5e7eb'"
+      onmouseout="this.style.background='#f3f4f6'"
+    >
+      🔄 Reset
+    </button>
+  </div>
+</div>
+
+
+
     
     <div id="complaint-heatmap" class="heatmap-container"></div>
     
