@@ -12,6 +12,18 @@ console.log("✅ Supabase initialized immediately");
 const VALID_ADMIN_CODES = ["GOV2024", "MAHA2024", "ADMIN123"];
 
 // ============================================
+// VOICE INPUT GLOBAL VARIABLES
+// ============================================
+let voiceRecognition = null;
+let isListening = false;
+let finalTranscript = "";
+let interimTranscript = "";
+let silenceTimer = null;
+let speechTimeout = null;
+const SILENCE_DURATION = 2500; // 2.5 seconds
+const MAX_RECORDING_TIME = 45000; // 45 seconds
+
+// ============================================
 // AUTHENTICATION FUNCTIONS
 // ============================================
 // ============================================
@@ -2831,123 +2843,555 @@ function generateSmartFallbackForecast() {
 // SMART VOICE INPUT WITH AUTO-FILL
 // ============================================
 
-let voiceRecognition = null;
-let isListening = false;
-let voiceTranscript = "";
-
 function initializeVoiceInput() {
   const voiceBtn = document.getElementById("voice-input-btn");
   const statusDiv = document.getElementById("voice-status");
 
-  if (!voiceBtn) return;
+  if (!voiceBtn) {
+    console.log("⚠️ Voice button not found");
+    return;
+  }
 
-  // Check browser support
   if (
     !("webkitSpeechRecognition" in window) &&
     !("SpeechRecognition" in window)
   ) {
     voiceBtn.style.display = "none";
-    statusDiv.innerHTML =
-      '<span style="color: #f59e0b;">⚠️ Voice input not supported in this browser</span>';
+    if (statusDiv) {
+      statusDiv.innerHTML =
+        '<span style="color: #f59e0b;">⚠️ Voice input not supported</span>';
+    }
     return;
   }
 
-  // Initialize speech recognition
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
   voiceRecognition = new SpeechRecognition();
-
-  // Configure recognition
-  voiceRecognition.continuous = false;
-  voiceRecognition.interimResults = false;
+  voiceRecognition.continuous = true;
+  voiceRecognition.interimResults = true;
   voiceRecognition.maxAlternatives = 1;
-  voiceRecognition.lang = "mr-IN"; // Default Marathi (auto-detects others)
+  voiceRecognition.lang = "mr-IN";
 
-  // Button click handler
+  setupVoiceHandlers();
+
   voiceBtn.addEventListener("click", () => {
     if (isListening) {
-      stopListening();
+      stopListening(true);
     } else {
       startListening();
     }
   });
 
-  function startListening() {
-    isListening = true;
-    voiceTranscript = "";
-    voiceBtn.classList.add("listening");
-    statusDiv.innerHTML =
-      '🎤 <span style="color: #ef4444; font-weight: 600;">बोलत आहे... Speak now (Marathi, Hindi, or English)</span>';
+  console.log("✅ Voice input initialized");
+}
 
-    try {
-      voiceRecognition.start();
-    } catch (error) {
-      console.error("Voice recognition error:", error);
-      stopListening();
-      statusDiv.innerHTML =
-        '<span style="color: #ef4444;">❌ Error starting voice input</span>';
-    }
+function setupVoiceHandlers() {
+  if (!voiceRecognition) {
+    console.error("❌ voiceRecognition is null");
+    return;
   }
 
-  function stopListening() {
-    isListening = false;
-    voiceBtn.classList.remove("listening");
-    try {
-      voiceRecognition.stop();
-    } catch (error) {
-      console.error("Error stopping recognition:", error);
+  voiceRecognition.onresult = (event) => {
+    interimTranscript = "";
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript + " ";
+        console.log("✅ Final:", transcript);
+      } else {
+        interimTranscript += transcript;
+      }
     }
-  }
 
-  // Handle results
-  voiceRecognition.onresult = async (event) => {
-    voiceTranscript = event.results[0][0].transcript;
-    const confidence = event.results[0][0].confidence;
+    const displayText = (finalTranscript + interimTranscript).trim();
+    if (displayText) {
+      const statusDiv = document.getElementById("voice-status");
+      if (statusDiv) {
+        statusDiv.innerHTML = `
+          <div style="background: #d1fae5; padding: 16px; border-radius: 10px; border-left: 4px solid #10b981;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <div style="width: 10px; height: 10px; background: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
+              <div style="color: #065f46; font-weight: 700;">🎤 Listening... (pauses are okay)</div>
+            </div>
+            <div style="color: #059669;">"${
+              displayText.length > 150
+                ? displayText.substring(0, 150) + "..."
+                : displayText
+            }"</div>
+          </div>
+        `;
+      }
+    }
 
-    console.log("🎤 Voice captured:", voiceTranscript);
-
-    statusDiv.innerHTML = `✅ <span style="color: #059669; font-weight: 600;">Processing: "${voiceTranscript.substring(
-      0,
-      50
-    )}..."</span>`;
-
-    stopListening();
-
-    // ✅ NEW: Auto-fill form with AI
-    await smartAutoFillForm(voiceTranscript);
+    if (silenceTimer) clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => {
+      if (isListening && finalTranscript.trim()) {
+        console.log("🔇 Silence detected");
+        stopListening(true);
+      }
+    }, SILENCE_DURATION);
   };
 
-  // Handle errors
   voiceRecognition.onerror = (event) => {
-    console.error("Speech recognition error:", event.error);
-
+    console.error("Speech error:", event.error);
+    const statusDiv = document.getElementById("voice-status");
     let errorMessage = "";
+
     switch (event.error) {
       case "no-speech":
-        errorMessage = "🔇 काहीही ऐकले नाही. कृपया पुन्हा प्रयत्न करा.";
+        errorMessage = "🔇 No speech detected";
         break;
       case "audio-capture":
-        errorMessage = "🎤 माइक्रोफोन सापडला नाही. परवानग्या तपासा.";
+        errorMessage = "🎤 Microphone not found";
         break;
       case "not-allowed":
-        errorMessage =
-          "🚫 माइक्रोफोन प्रवेश नाकारला. ब्राउझर सेटिंग्ज सक्षम करा.";
+        errorMessage = "🚫 Microphone access denied";
+        break;
+      case "aborted":
+        if (finalTranscript.trim()) {
+          processFinalTranscript(finalTranscript);
+          return;
+        }
+        errorMessage = "⏹️ Recording stopped";
         break;
       default:
         errorMessage = `❌ Error: ${event.error}`;
     }
 
-    statusDiv.innerHTML = `<span style="color: #ef4444;">${errorMessage}</span>`;
-    stopListening();
-
+    if (statusDiv) {
+      statusDiv.innerHTML = `<div style="background: #fee2e2; padding: 16px; border-radius: 10px; color: #991b1b;">${errorMessage}</div>`;
+    }
+    stopListening(false);
     setTimeout(() => {
-      statusDiv.innerHTML = "";
-    }, 4000);
+      if (statusDiv) statusDiv.innerHTML = "";
+    }, 5000);
   };
 
   voiceRecognition.onend = () => {
-    stopListening();
+    if (isListening && finalTranscript.trim()) {
+      stopListening(true);
+    } else {
+      isListening = false;
+      const voiceBtn = document.getElementById("voice-input-btn");
+      if (voiceBtn) voiceBtn.classList.remove("listening");
+    }
   };
+}
+
+function startListening() {
+  if (!voiceRecognition) {
+    alert("Voice recognition not available");
+    return;
+  }
+
+  isListening = true;
+  finalTranscript = "";
+  interimTranscript = "";
+
+  const voiceBtn = document.getElementById("voice-input-btn");
+  const statusDiv = document.getElementById("voice-status");
+
+  if (voiceBtn) voiceBtn.classList.add("listening");
+  if (statusDiv) {
+    statusDiv.innerHTML = `
+      <div style="background: #fef3c7; padding: 16px; border-radius: 10px; border-left: 4px solid #f59e0b;">
+        <div style="color: #ef4444; font-weight: 700;">🎤 Recording... Speak naturally</div>
+        <div style="color: #92400e; font-size: 13px;">You can pause between sentences</div>
+      </div>
+    `;
+  }
+
+  try {
+    voiceRecognition.start();
+    speechTimeout = setTimeout(() => {
+      if (isListening) stopListening(true);
+    }, MAX_RECORDING_TIME);
+  } catch (error) {
+    console.error("Voice start error:", error);
+    stopListening(false);
+  }
+}
+
+function stopListening(shouldProcess = true) {
+  isListening = false;
+  const voiceBtn = document.getElementById("voice-input-btn");
+  if (voiceBtn) voiceBtn.classList.remove("listening");
+
+  if (silenceTimer) {
+    clearTimeout(silenceTimer);
+    silenceTimer = null;
+  }
+  if (speechTimeout) {
+    clearTimeout(speechTimeout);
+    speechTimeout = null;
+  }
+
+  if (voiceRecognition) {
+    try {
+      voiceRecognition.stop();
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (shouldProcess && finalTranscript.trim()) {
+    processFinalTranscript(finalTranscript);
+  }
+}
+
+async function processFinalTranscript(transcript) {
+  console.log("🎤 Final:", transcript);
+  const statusDiv = document.getElementById("voice-status");
+  if (statusDiv) {
+    statusDiv.innerHTML = `
+      <div style="background: #dbeafe; padding: 16px; border-radius: 10px;">
+        <div style="color: #1e40af; font-weight: 700;">🤖 AI Processing...</div>
+      </div>
+    `;
+  }
+  await smartAutoFillForm(transcript);
+}
+
+async function smartAutoFillForm(transcript) {
+  const statusDiv = document.getElementById("voice-status");
+  if (statusDiv) {
+    statusDiv.innerHTML =
+      '<div style="color: #3b82f6;">🤖 AI processing speech...</div>';
+  }
+
+  try {
+    const extractedData = await extractFormDataFromSpeech(transcript);
+    if (!extractedData) throw new Error("Failed to extract data");
+
+    fillFormFields(extractedData);
+
+    if (statusDiv) {
+      statusDiv.innerHTML = `
+        <div style="background: #d1fae5; padding: 12px; border-radius: 8px; border-left: 4px solid #10b981;">
+          <strong style="color: #065f46;">✅ Form Auto-Filled Successfully!</strong>
+          <p style="margin: 5px 0 0 0; font-size: 13px; color: #059669;">Please verify and submit</p>
+        </div>
+      `;
+    }
+
+    setTimeout(() => {
+      if (statusDiv) statusDiv.innerHTML = "";
+    }, 5000);
+  } catch (error) {
+    console.error("Auto-fill error:", error);
+    if (statusDiv) {
+      statusDiv.innerHTML =
+        '<span style="color: #ef4444;">⚠️ Could not auto-fill. Please fill manually.</span>';
+    }
+    setTimeout(() => {
+      if (statusDiv) statusDiv.innerHTML = "";
+    }, 4000);
+  }
+}
+
+async function extractFormDataFromSpeech(transcript) {
+  const API_ENDPOINT = getApiEndpoint();
+  const prompt = `You are an intelligent form-filling assistant for Maharashtra Government complaint system.
+
+Extract ALL possible information from this speech transcript and return ONLY valid JSON (no markdown, no backticks):
+
+Speech: "${transcript}"
+
+CRITICAL LANGUAGE RULES:
+1. DETECT the primary language spoken (Marathi, Hindi, or English)
+2. If speech is in Marathi/Hindi:
+   - Keep Name, Ward, and Description in ORIGINAL language
+   - Translate City to English (for dropdown matching)
+   - Translate Complaint Type to English (for dropdown matching)
+3. If speech is in English: Keep everything in English
+4. Phone and Email always in standard format
+
+Extract these fields (set to null if not mentioned):
+{
+  "detected_language": "marathi/hindi/english",
+  "name": "full name in ORIGINAL language",
+  "phone": "10-digit phone number (digits only, no spaces)",
+  "email": "email address if mentioned",
+  "city": "ENGLISH ONLY - one of: Mumbai, Pune, Nagpur, Nashik, Aurangabad, Thane, Solapur, Kolhapur",
+  "ward": "ward number/area in ORIGINAL language",
+  "complaint_type": "ENGLISH ONLY - EXACTLY one of: Water Supply, Electricity, Road Repair, Healthcare, Garbage Collection, Street Lights, Drainage, Public Transport",
+  "description": "detailed description in ORIGINAL language",
+  "severity": "one of: Low, Medium, High, Critical",
+  "affected_count": "estimated number (integer, default 10 if not mentioned)"
+}`;
+
+  try {
+    const response = await fetch(API_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 1024,
+          topP: 0.8,
+          topK: 40,
+        },
+      }),
+    });
+
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+    const data = await response.json();
+    let text = "";
+
+    if (data.candidates && data.candidates.length > 0) {
+      const candidate = data.candidates[0];
+      if (
+        candidate.content &&
+        candidate.content.parts &&
+        candidate.content.parts.length > 0
+      ) {
+        text = candidate.content.parts[0].text || "";
+      }
+    }
+
+    if (!text) throw new Error("No response from AI");
+
+    const cleanText = text
+      .trim()
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/gi, "")
+      .replace(/^[^{]*({)/, "$1")
+      .replace(/(})[^}]*$/, "$1");
+
+    const extractedData = JSON.parse(cleanText);
+    console.log("✅ Extracted:", extractedData);
+    return extractedData;
+  } catch (error) {
+    console.error("Gemini extraction error:", error);
+    return null;
+  }
+}
+
+function fillFormFields(data) {
+  if (data.name) {
+    const nameInput = document.querySelector('input[name="name"]');
+    if (nameInput) nameInput.value = data.name;
+  }
+
+  if (data.phone) {
+    const phoneInput = document.querySelector('input[name="phone"]');
+    if (phoneInput) phoneInput.value = data.phone;
+  }
+
+  if (data.email) {
+    const emailInput = document.querySelector('input[name="email"]');
+    if (emailInput) emailInput.value = data.email;
+  }
+
+  if (data.city) {
+    const citySelect = document.querySelector('select[name="city"]');
+    if (citySelect) citySelect.value = data.city;
+  }
+
+  if (data.ward) {
+    const wardInput = document.querySelector('input[name="ward"]');
+    if (wardInput) wardInput.value = data.ward;
+  }
+
+  if (data.complaint_type) {
+    const typeSelect = document.querySelector('select[name="complaint_type"]');
+    if (typeSelect) typeSelect.value = data.complaint_type;
+  }
+
+  if (data.description) {
+    const descInput = document.querySelector('textarea[name="description"]');
+    if (descInput) descInput.value = `[Voice Input] ${data.description}`;
+  }
+
+  if (data.severity) {
+    const severitySelect = document.querySelector('select[name="severity"]');
+    if (severitySelect) severitySelect.value = data.severity;
+  }
+
+  if (data.affected_count) {
+    const affectedInput = document.querySelector(
+      'input[name="affected_count"]'
+    );
+    if (affectedInput) affectedInput.value = data.affected_count;
+  }
+
+  console.log("✅ Form filled!");
+}
+
+// Handle results
+voiceRecognition.onresult = (event) => {
+  interimTranscript = "";
+
+  for (let i = event.resultIndex; i < event.results.length; i++) {
+    const transcript = event.results[i][0].transcript;
+
+    if (event.results[i].isFinal) {
+      finalTranscript += transcript + " ";
+      console.log("✅ Final segment:", transcript);
+    } else {
+      interimTranscript += transcript;
+    }
+  }
+
+  // Show live feedback
+  const displayText = (finalTranscript + interimTranscript).trim();
+
+  if (displayText) {
+    const statusDiv = document.getElementById("voice-status");
+    statusDiv.innerHTML = `
+        <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); padding: 16px; border-radius: 10px; border-left: 4px solid #10b981;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <div style="width: 10px; height: 10px; background: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
+            <div style="color: #065f46; font-weight: 700; font-size: 14px;">🎤 Listening... (pauses are okay)</div>
+          </div>
+          <div style="color: #059669; font-size: 14px; line-height: 1.6;">
+            "${
+              displayText.length > 150
+                ? displayText.substring(0, 150) + "..."
+                : displayText
+            }"
+          </div>
+        </div>
+      `;
+  }
+
+  // Reset silence timer
+  if (silenceTimer) clearTimeout(silenceTimer);
+
+  silenceTimer = setTimeout(() => {
+    if (isListening && finalTranscript.trim()) {
+      console.log("🔇 Silence detected, processing...");
+      stopListening(true);
+    }
+  }, SILENCE_DURATION);
+};
+
+// Handle errors
+voiceRecognition.onerror = (event) => {
+  console.error("Speech recognition error:", event.error);
+
+  const statusDiv = document.getElementById("voice-status");
+  let errorMessage = "";
+
+  switch (event.error) {
+    case "no-speech":
+      errorMessage =
+        "🔇 No speech detected. Please speak clearly and try again.";
+      break;
+    case "audio-capture":
+      errorMessage = "🎤 Microphone not found. Please check permissions.";
+      break;
+    case "not-allowed":
+      errorMessage = "🚫 Microphone access denied. Enable in browser settings.";
+      break;
+    case "aborted":
+      if (finalTranscript.trim()) {
+        processFinalTranscript(finalTranscript);
+        return;
+      }
+      errorMessage = "⏹️ Recording stopped. Click mic to try again.";
+      break;
+    default:
+      errorMessage = `❌ Error: ${event.error}. Please try again.`;
+  }
+
+  statusDiv.innerHTML = `<div style="background: #fee2e2; padding: 16px; border-radius: 10px; color: #991b1b;">${errorMessage}</div>`;
+  stopListening(false);
+  setTimeout(() => {
+    statusDiv.innerHTML = "";
+  }, 5000);
+};
+
+// Handle end
+voiceRecognition.onend = () => {
+  if (isListening && finalTranscript.trim()) {
+    stopListening(true);
+  } else {
+    isListening = false;
+    document.getElementById("voice-input-btn").classList.remove("listening");
+  }
+};
+
+function startListening() {
+  isListening = true;
+  finalTranscript = "";
+  interimTranscript = "";
+
+  const voiceBtn = document.getElementById("voice-input-btn");
+  const statusDiv = document.getElementById("voice-status");
+
+  voiceBtn.classList.add("listening");
+
+  statusDiv.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 16px; border-radius: 10px; border-left: 4px solid #f59e0b;">
+      <div style="width: 12px; height: 12px; background: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
+      <div>
+        <div style="color: #ef4444; font-weight: 700; font-size: 15px;">🎤 Recording... Speak naturally</div>
+        <div style="color: #92400e; font-size: 13px; margin-top: 4px;">You can pause between sentences. I'll wait for you to finish.</div>
+      </div>
+    </div>
+  `;
+
+  try {
+    voiceRecognition.start();
+
+    speechTimeout = setTimeout(() => {
+      if (isListening) {
+        console.log("⏰ Max recording time reached");
+        stopListening(true);
+      }
+    }, MAX_RECORDING_TIME);
+  } catch (error) {
+    console.error("Voice start error:", error);
+    stopListening(false);
+  }
+}
+
+function stopListening(shouldProcess = true) {
+  isListening = false;
+
+  const voiceBtn = document.getElementById("voice-input-btn");
+  voiceBtn.classList.remove("listening");
+
+  if (silenceTimer) {
+    clearTimeout(silenceTimer);
+    silenceTimer = null;
+  }
+
+  if (speechTimeout) {
+    clearTimeout(speechTimeout);
+    speechTimeout = null;
+  }
+
+  try {
+    voiceRecognition.stop();
+  } catch (error) {
+    console.error("Error stopping recognition:", error);
+  }
+
+  if (shouldProcess && finalTranscript.trim()) {
+    processFinalTranscript(finalTranscript);
+  }
+}
+
+async function processFinalTranscript(transcript) {
+  console.log("🎤 Final transcript:", transcript);
+
+  const statusDiv = document.getElementById("voice-status");
+  statusDiv.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 16px; border-radius: 10px; border-left: 4px solid #3b82f6;">
+      <div class="ai-spinner" style="width: 20px; height: 20px; border: 3px solid #dbeafe; border-top-color: #3b82f6;"></div>
+      <div>
+        <div style="color: #1e40af; font-weight: 700; font-size: 15px;">🤖 AI Processing...</div>
+        <div style="color: #1e40af; font-size: 13px; margin-top: 4px;">Analyzing your speech and filling the form</div>
+      </div>
+    </div>
+  `;
+
+  await smartAutoFillForm(transcript);
 }
 
 // ✅ NEW FUNCTION: Smart Auto-Fill using Gemini AI
