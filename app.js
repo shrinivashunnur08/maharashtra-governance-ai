@@ -126,8 +126,11 @@ function switchCitizenForm(formId) {
 
 function handleCitizenLogin(event) {
   event.preventDefault();
-  const email = document.getElementById("citizen-login-email").value.trim();
-  const password = document.getElementById("citizen-login-password").value;
+  const email = document
+    .getElementById("citizen-login-email")
+    .value.trim()
+    .toLowerCase(); // ✅ Lowercase
+  const password = document.getElementById("citizen-login-password").value; // ✅ Don't trim!
   const errorEl = document.getElementById("citizen-login-error");
 
   errorEl.textContent = "";
@@ -147,21 +150,30 @@ function handleCitizenLogin(event) {
 
   try {
     const users = JSON.parse(localStorage.getItem("maha_users") || "[]");
-    console.log("📋 All users:", users);
-    console.log("🔍 Looking for:", email);
 
+    console.log("📋 Total users in system:", users.length);
+    console.log("🔍 Looking for email:", email);
+    console.log("🔐 Password length:", password.length);
+
+    // ✅ Find user (case-insensitive email, exact password match)
     const user = users.find(
       (u) =>
-        u.email.toLowerCase() === email.toLowerCase() &&
-        u.password === password &&
+        u.email.toLowerCase() === email &&
+        u.password === password && // ✅ Exact match (no trim!)
         u.role === "citizen"
     );
 
     if (!user) {
+      console.log("❌ Login failed - no matching user found");
+      console.log(
+        "Available users:",
+        users.map((u) => ({ email: u.email, hasPassword: !!u.password }))
+      );
       showError(errorEl, "❌ Invalid email or password");
-      console.log("❌ Login failed - user not found or password incorrect");
       return;
     }
+
+    console.log("✅ User found:", user.email);
 
     const session = {
       userId: user.id,
@@ -173,6 +185,7 @@ function handleCitizenLogin(event) {
 
     localStorage.setItem("maha_session", JSON.stringify(session));
     console.log("✅ Login successful:", session);
+
     showMainApp(session);
   } catch (error) {
     showError(errorEl, "❌ Login failed. Please try again.");
@@ -187,8 +200,8 @@ function handleCitizenSignup(event) {
   const email = document
     .getElementById("citizen-signup-email")
     .value.trim()
-    .toLowerCase();
-  const password = document.getElementById("citizen-signup-password").value;
+    .toLowerCase(); // ✅ Always lowercase
+  const password = document.getElementById("citizen-signup-password").value; // ✅ Don't trim passwords!
   const confirm = document.getElementById("citizen-signup-confirm").value;
   const errorEl = document.getElementById("citizen-signup-error");
 
@@ -230,7 +243,7 @@ function handleCitizenSignup(event) {
       localStorage.getItem("maha_users") || "[]"
     );
 
-    // Check for existing email (case-insensitive)
+    // ✅ Check for existing email (case-insensitive)
     if (existingUsers.find((u) => u.email.toLowerCase() === email)) {
       showError(errorEl, "❌ Email already registered. Please login instead.");
       return;
@@ -239,9 +252,9 @@ function handleCitizenSignup(event) {
     const newUser = {
       id: Date.now(),
       name,
-      email: email, // Store in lowercase
+      email: email, // ✅ Store in lowercase
       phone,
-      password,
+      password, // ✅ Store exact password (don't trim!)
       role: "citizen",
       createdAt: new Date().toISOString(),
     };
@@ -249,7 +262,11 @@ function handleCitizenSignup(event) {
     existingUsers.push(newUser);
     localStorage.setItem("maha_users", JSON.stringify(existingUsers));
 
-    console.log("✅ User created:", { email, name });
+    console.log("✅ User created successfully:", {
+      email,
+      name,
+      password: "***",
+    });
 
     // Show success message
     const successDiv = document.createElement("div");
@@ -4503,6 +4520,25 @@ setTimeout(() => {
     badge.style.display = "flex";
   }
 }, 2000);
+
+// ✅ DEBUG HELPER - Remove in production
+function debugShowAllUsers() {
+  const users = JSON.parse(localStorage.getItem("maha_users") || "[]");
+  console.log("=== ALL REGISTERED USERS ===");
+  users.forEach((u, i) => {
+    console.log(`User ${i + 1}:`, {
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+      password: u.password, // Show in console only for debugging
+      role: u.role,
+    });
+  });
+  console.log("========================");
+}
+
+// ✅ Call this in browser console if you forget your password:
+// debugShowAllUsers()
 
 console.log("✅ MITRA AI Chatbot loaded successfully!");
 
