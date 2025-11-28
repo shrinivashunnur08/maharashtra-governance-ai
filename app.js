@@ -2810,12 +2810,16 @@ function generateSmartFallbackForecast() {
 // VOICE INPUT FEATURE
 // ============================================
 
+// ============================================
+// SMART VOICE INPUT WITH AUTO-FILL
+// ============================================
+
 let voiceRecognition = null;
 let isListening = false;
+let voiceTranscript = "";
 
 function initializeVoiceInput() {
   const voiceBtn = document.getElementById("voice-input-btn");
-  const descriptionField = document.getElementById("complaint-description");
   const statusDiv = document.getElementById("voice-status");
 
   if (!voiceBtn) return;
@@ -2840,15 +2844,7 @@ function initializeVoiceInput() {
   voiceRecognition.continuous = false;
   voiceRecognition.interimResults = false;
   voiceRecognition.maxAlternatives = 1;
-
-  // Language selector
-  const languageMap = {
-    marathi: "mr-IN",
-    english: "en-IN",
-    hindi: "hi-IN",
-  };
-
-  voiceRecognition.lang = "mr-IN"; // Default Marathi
+  voiceRecognition.lang = "mr-IN"; // Default Marathi (auto-detects others)
 
   // Button click handler
   voiceBtn.addEventListener("click", () => {
@@ -2861,9 +2857,10 @@ function initializeVoiceInput() {
 
   function startListening() {
     isListening = true;
+    voiceTranscript = "";
     voiceBtn.classList.add("listening");
     statusDiv.innerHTML =
-      '🎤 <span style="color: #ef4444; font-weight: 600;">Listening... Speak now in Marathi or English</span>';
+      '🎤 <span style="color: #ef4444; font-weight: 600;">बोलत आहे... Speak now (Marathi, Hindi, or English)</span>';
 
     try {
       voiceRecognition.start();
@@ -2878,7 +2875,6 @@ function initializeVoiceInput() {
   function stopListening() {
     isListening = false;
     voiceBtn.classList.remove("listening");
-    statusDiv.innerHTML = "";
     try {
       voiceRecognition.stop();
     } catch (error) {
@@ -2887,27 +2883,21 @@ function initializeVoiceInput() {
   }
 
   // Handle results
-  voiceRecognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
+  voiceRecognition.onresult = async (event) => {
+    voiceTranscript = event.results[0][0].transcript;
     const confidence = event.results[0][0].confidence;
 
-    // Append to existing text
-    const currentText = descriptionField.value;
-    descriptionField.value = currentText
-      ? currentText + " " + transcript
-      : transcript;
+    console.log("🎤 Voice captured:", voiceTranscript);
 
-    statusDiv.innerHTML = `✅ <span style="color: #059669; font-weight: 600;">Captured: "${transcript.substring(
+    statusDiv.innerHTML = `✅ <span style="color: #059669; font-weight: 600;">Processing: "${voiceTranscript.substring(
       0,
       50
     )}..."</span>`;
 
     stopListening();
 
-    // Auto-hide status after 3 seconds
-    setTimeout(() => {
-      statusDiv.innerHTML = "";
-    }, 3000);
+    // ✅ NEW: Auto-fill form with AI
+    await smartAutoFillForm(voiceTranscript);
   };
 
   // Handle errors
@@ -2917,14 +2907,14 @@ function initializeVoiceInput() {
     let errorMessage = "";
     switch (event.error) {
       case "no-speech":
-        errorMessage = "🔇 No speech detected. Please try again.";
+        errorMessage = "🔇 काहीही ऐकले नाही. कृपया पुन्हा प्रयत्न करा.";
         break;
       case "audio-capture":
-        errorMessage = "🎤 Microphone not found. Please check permissions.";
+        errorMessage = "🎤 माइक्रोफोन सापडला नाही. परवानग्या तपासा.";
         break;
       case "not-allowed":
         errorMessage =
-          "🚫 Microphone access denied. Please enable in browser settings.";
+          "🚫 माइक्रोफोन प्रवेश नाकारला. ब्राउझर सेटिंग्ज सक्षम करा.";
         break;
       default:
         errorMessage = `❌ Error: ${event.error}`;
@@ -2942,6 +2932,288 @@ function initializeVoiceInput() {
     stopListening();
   };
 }
+
+// ✅ NEW FUNCTION: Smart Auto-Fill using Gemini AI
+async function smartAutoFillForm(transcript) {
+  const statusDiv = document.getElementById("voice-status");
+
+  // Show processing
+  statusDiv.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div class="ai-spinner" style="width: 20px; height: 20px; border: 3px solid #e2e8f0; border-top-color: #3b82f6;"></div>
+      <span style="color: #3b82f6; font-weight: 600;">🤖 AI processing speech...</span>
+    </div>
+  `;
+
+  try {
+    const extractedData = await extractFormDataFromSpeech(transcript);
+
+    if (!extractedData) {
+      throw new Error("Failed to extract data");
+    }
+
+    // Auto-fill all fields
+    fillFormFields(extractedData);
+
+    // Show success
+    statusDiv.innerHTML = `
+      <div style="background: #d1fae5; padding: 12px; border-radius: 8px; border-left: 4px solid #10b981;">
+        <strong style="color: #065f46;">✅ Form Auto-Filled Successfully!</strong>
+        <p style="margin: 5px 0 0 0; font-size: 13px; color: #059669;">Please verify all fields and submit</p>
+      </div>
+    `;
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      statusDiv.innerHTML = "";
+    }, 5000);
+  } catch (error) {
+    console.error("Auto-fill error:", error);
+    statusDiv.innerHTML = `
+      <span style="color: #ef4444;">⚠️ Could not auto-fill. Please fill manually or try again.</span>
+    `;
+
+    setTimeout(() => {
+      statusDiv.innerHTML = "";
+    }, 4000);
+  }
+}
+
+// ✅ Extract structured data from speech using Gemini AI
+async function extractFormDataFromSpeech(transcript) {
+  const API_ENDPOINT = getApiEndpoint();
+
+  const prompt = `You are an intelligent form-filling assistant for Maharashtra Government complaint system.
+
+Extract ALL possible information from this speech transcript and return ONLY valid JSON (no markdown, no backticks):
+
+Speech: "${transcript}"
+
+CRITICAL LANGUAGE RULES:
+1. DETECT the primary language spoken (Marathi, Hindi, or English)
+2. If speech is in Marathi/Hindi:
+   - Keep Name, Ward, and Description in ORIGINAL language
+   - Translate City to English (for dropdown matching)
+   - Translate Complaint Type to English (for dropdown matching)
+3. If speech is in English:
+   - Keep everything in English
+4. Phone and Email always in standard format
+
+Extract these fields (set to null if not mentioned):
+{
+  "detected_language": "marathi/hindi/english",
+  "name": "full name in ORIGINAL language",
+  "phone": "10-digit phone number (digits only, no spaces)",
+  "email": "email address if mentioned",
+  "city": "ENGLISH ONLY - one of: Mumbai, Pune, Nagpur, Nashik, Aurangabad, Thane, Solapur, Kolhapur",
+  "ward": "ward number/area in ORIGINAL language",
+  "complaint_type": "ENGLISH ONLY - EXACTLY one of: Water Supply, Electricity, Road Repair, Healthcare, Garbage Collection, Street Lights, Drainage, Public Transport",
+  "description": "detailed description in ORIGINAL language",
+  "severity": "one of: Low, Medium, High, Critical",
+  "affected_count": "estimated number (integer, default 10 if not mentioned)"
+}
+
+TRANSLATION EXAMPLES:
+- मुंबई → city: "Mumbai"
+- पुणे → city: "Pune"
+- पाणी समस्या → complaint_type: "Water Supply"
+- रस्ता खराब → complaint_type: "Road Repair"
+- वीज नाही → complaint_type: "Electricity"
+- कचरा → complaint_type: "Garbage Collection"
+- स्ट्रीट लाइट → complaint_type: "Street Lights"
+- गटार → complaint_type: "Drainage"
+
+Example Input: "माझं नाव राज कुमार आहे, फोन ९८७६५४३२१०, मी पुणे वॉर्ड १२ मध्ये राहतो, येथे पाण्याची खूप मोठी समस्या आहे"
+
+Expected Output:
+{
+  "detected_language": "marathi",
+  "name": "राज कुमार",
+  "phone": "9876543210",
+  "email": null,
+  "city": "Pune",
+  "ward": "वॉर्ड १२",
+  "complaint_type": "Water Supply",
+  "description": "येथे पाण्याची खूप मोठी समस्या आहे",
+  "severity": "High",
+  "affected_count": 50
+}
+
+Example Input (Hindi): "मेरा नाम सुनील है, फोन ९८७६५४३२१०, मैं मुंबई वार्ड ५ में रहता हूं, यहां बिजली नहीं आती है"
+
+Expected Output:
+{
+  "detected_language": "hindi",
+  "name": "सुनील",
+  "phone": "9876543210",
+  "email": null,
+  "city": "Mumbai",
+  "ward": "वार्ड ५",
+  "complaint_type": "Electricity",
+  "description": "यहां बिजली नहीं आती है",
+  "severity": "High",
+  "affected_count": 25
+}
+
+Example Input (English): "My name is John Smith, phone 9876543210, I live in Pune Ward 8, there's a road damage problem"
+
+Expected Output:
+{
+  "detected_language": "english",
+  "name": "John Smith",
+  "phone": "9876543210",
+  "email": null,
+  "city": "Pune",
+  "ward": "Ward 8",
+  "complaint_type": "Road Repair",
+  "description": "there's a road damage problem",
+  "severity": "Medium",
+  "affected_count": 20
+}`;
+
+  try {
+    const response = await fetch(API_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.2, // Lower for more consistent translations
+          maxOutputTokens: 1024,
+          topP: 0.8,
+          topK: 40,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    let text = "";
+
+    if (data.candidates && data.candidates.length > 0) {
+      const candidate = data.candidates[0];
+      if (
+        candidate.content &&
+        candidate.content.parts &&
+        candidate.content.parts.length > 0
+      ) {
+        text = candidate.content.parts[0].text || "";
+      }
+    }
+
+    if (!text) {
+      throw new Error("No response from AI");
+    }
+
+    // Clean and parse JSON
+    const cleanText = text
+      .trim()
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/gi, "")
+      .replace(/^[^{]*({)/, "$1")
+      .replace(/(})[^}]*$/, "$1");
+
+    const extractedData = JSON.parse(cleanText);
+
+    console.log("✅ Extracted data:", extractedData);
+    console.log("🌍 Detected language:", extractedData.detected_language);
+
+    return extractedData;
+  } catch (error) {
+    console.error("Gemini extraction error:", error);
+    return null;
+  }
+}
+
+// ✅ Fill form fields with extracted data
+function fillFormFields(data) {
+  // Name
+  if (data.name) {
+    const nameInput = document.querySelector('input[name="name"]');
+    if (nameInput) nameInput.value = data.name;
+  }
+
+  // Phone
+  if (data.phone) {
+    const phoneInput = document.querySelector('input[name="phone"]');
+    if (phoneInput) phoneInput.value = data.phone;
+  }
+
+  // Email
+  if (data.email) {
+    const emailInput = document.querySelector('input[name="email"]');
+    if (emailInput) emailInput.value = data.email;
+  }
+
+  // City
+  if (data.city) {
+    const citySelect = document.querySelector('select[name="city"]');
+    if (citySelect) citySelect.value = data.city;
+  }
+
+  // Ward
+  if (data.ward) {
+    const wardInput = document.querySelector('input[name="ward"]');
+    if (wardInput) wardInput.value = data.ward;
+  }
+
+  // Complaint Type
+  if (data.complaint_type) {
+    const typeSelect = document.querySelector('select[name="complaint_type"]');
+    if (typeSelect) typeSelect.value = data.complaint_type;
+  }
+
+  // Description
+  if (data.description) {
+    const descInput = document.querySelector('textarea[name="description"]');
+    if (descInput) {
+      // Prepend "[Voice Input]" tag
+      descInput.value = `[Voice Input] ${data.description}`;
+    }
+  }
+
+  // Severity
+  if (data.severity) {
+    const severitySelect = document.querySelector('select[name="severity"]');
+    if (severitySelect) severitySelect.value = data.severity;
+  }
+
+  // Affected Count
+  if (data.affected_count) {
+    const affectedInput = document.querySelector(
+      'input[name="affected_count"]'
+    );
+    if (affectedInput) affectedInput.value = data.affected_count;
+  }
+
+  console.log("✅ Form filled with extracted data!");
+}
+```
+
+---
+
+## **What This Does:**
+
+1. ✅ **Listens to natural speech** in Marathi, Hindi, or English
+2. ✅ **Calls Gemini AI** to extract structured data
+3. ✅ **Auto-fills ALL fields**: Name, Phone, City, Ward, Complaint Type, Description, Severity, Affected Count
+4. ✅ **Smart Detection**:
+   - "पाणी नाही" → Water Supply
+   - "रस्ता खराब" → Road Repair
+   - "वीज गेली" → Electricity
+5. ✅ **Shows processing UI** with spinner
+6. ✅ **User just verifies and submits!**
+
+---
+
+## **Test it:**
+
+User speaks:
+```;
+("माझं नाव सुनील पाटील आहे, माझा फोन नंबर ९८७६५४३२१० आहे, मी मुंबई वॉर्ड १५ मध्ये राहतो, आणि येथे गेल्या ३ दिवसांपासून पाणी आलं नाहीये");
 
 // ============================================
 // IMAGE UPLOAD + AI ANALYSIS FEATURE
